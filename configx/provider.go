@@ -3,11 +3,11 @@ package configx
 import (
 	"context"
 	"fmt"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/inhies/go-bytesize"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/posflag"
 	"github.com/knadh/koanf/v2"
-	"github.com/rs/cors"
 	"github.com/spf13/pflag"
 	"log/slog"
 	"net/url"
@@ -43,6 +43,8 @@ type Provider struct {
 
 	providers     []koanf.Provider
 	userProviders []koanf.Provider
+
+	decodeHookFunc mapstructure.DecodeHookFunc
 }
 
 const (
@@ -57,7 +59,19 @@ func RegisterConfigFlag(flags *pflag.FlagSet, fallback []string) {
 func New(ctx context.Context, options ...ProviderOptions) (*Provider, error) {
 	p := &Provider{
 		logger: slog.Default(),
-
+		decodeHookFunc: mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToIPHookFunc(),
+			mapstructure.StringToNetIPAddrHookFunc(),
+			mapstructure.StringToNetIPAddrPortHookFunc(),
+			mapstructure.StringToTimeHookFunc(time.RFC3339),
+			mapstructure.StringToSliceHookFunc(","),
+			StringToMailAddressHookFunc(),
+			StringToRegexpHookFunc(),
+			StringToURLHookFunc(),
+			JsonUnmarshalerHookFunc(),
+			TextUnmarshalerHookFunc(),
+		),
 		Koanf: koanf.NewWithConf(koanf.Conf{Delim: Delimiter, StrictMerge: true}),
 	}
 	for _, option := range options {
@@ -381,22 +395,22 @@ func (p *Provider) GetF(key string, fallback interface{}) (val interface{}) {
 	return p.Get(key)
 }
 
-func (p *Provider) CORS(prefix string, defaults cors.Options) (cors.Options, bool) {
-	if len(prefix) > 0 {
-		prefix = strings.TrimRight(prefix, ".") + "."
-	}
-
-	return cors.Options{
-		AllowedOrigins:     p.StringsF(prefix+"cors.allowed_origins", defaults.AllowedOrigins),
-		AllowedMethods:     p.StringsF(prefix+"cors.allowed_methods", defaults.AllowedMethods),
-		AllowedHeaders:     p.StringsF(prefix+"cors.allowed_headers", defaults.AllowedHeaders),
-		ExposedHeaders:     p.StringsF(prefix+"cors.exposed_headers", defaults.ExposedHeaders),
-		AllowCredentials:   p.BoolF(prefix+"cors.allow_credentials", defaults.AllowCredentials),
-		OptionsPassthrough: p.BoolF(prefix+"cors.options_passthrough", defaults.OptionsPassthrough),
-		MaxAge:             p.IntF(prefix+"cors.max_age", defaults.MaxAge),
-		Debug:              p.BoolF(prefix+"cors.debug", defaults.Debug),
-	}, p.Bool(prefix + "cors.enabled")
-}
+//func (p *Provider) CORS(prefix string, defaults cors.Options) (cors.Options, bool) {
+//	if len(prefix) > 0 {
+//		prefix = strings.TrimRight(prefix, ".") + "."
+//	}
+//
+//	return cors.Options{
+//		AllowedOrigins:     p.StringsF(prefix+"cors.allowed_origins", defaults.AllowedOrigins),
+//		AllowedMethods:     p.StringsF(prefix+"cors.allowed_methods", defaults.AllowedMethods),
+//		AllowedHeaders:     p.StringsF(prefix+"cors.allowed_headers", defaults.AllowedHeaders),
+//		ExposedHeaders:     p.StringsF(prefix+"cors.exposed_headers", defaults.ExposedHeaders),
+//		AllowCredentials:   p.BoolF(prefix+"cors.allow_credentials", defaults.AllowCredentials),
+//		OptionsPassthrough: p.BoolF(prefix+"cors.options_passthrough", defaults.OptionsPassthrough),
+//		MaxAge:             p.IntF(prefix+"cors.max_age", defaults.MaxAge),
+//		Debug:              p.BoolF(prefix+"cors.debug", defaults.Debug),
+//	}, p.Bool(prefix + "cors.enabled")
+//}
 
 func (p *Provider) RequestURIF(path string, fallback *url.URL) *url.URL {
 	p.l.RLock()
@@ -432,4 +446,20 @@ func (p *Provider) URIF(path string, fallback *url.URL) *url.URL {
 	}
 
 	return fallback
+}
+
+func (p *Provider) Unmarshal(path string, o interface{}) error {
+	return p.UnmarshalWithConf(path, o, koanf.UnmarshalConf{})
+}
+
+func (p *Provider) UnmarshalWithConf(path string, o interface{}, c koanf.UnmarshalConf) error {
+	if c.DecoderConfig == nil {
+		c.DecoderConfig = &mapstructure.DecoderConfig{
+			DecodeHook:       p.decodeHookFunc,
+			Metadata:         nil,
+			Result:           o,
+			WeaklyTypedInput: true,
+		}
+	}
+	return p.Koanf.UnmarshalWithConf(path, o, c)
 }

@@ -2,6 +2,7 @@ package configx
 
 import (
 	"context"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/knadh/koanf/v2"
 	"github.com/spf13/pflag"
 	"log/slog"
@@ -95,5 +96,11 @@ func EnableEnvLoading(prefix string) ProviderOptions {
 func DisabledEnvLoading() ProviderOptions {
 	return func(p *Provider) {
 		p.enableEnvLoading = false
+	}
+}
+
+func WithDecodeHookFunc(decodeHookFunc mapstructure.DecodeHookFunc) ProviderOptions {
+	return func(p *Provider) {
+		p.decodeHookFunc = decodeHookFunc
 	}
 }
