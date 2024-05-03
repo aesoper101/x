@@ -2,6 +2,7 @@ package errorsx
 
 import (
 	"errors"
+	"net/http"
 )
 
 var (
@@ -10,6 +11,7 @@ var (
 )
 
 // AlreadyExists 是已经存在的错误
+// 对应状态码 409
 // 例如：用户已经存在，数据库中已经存在等
 type AlreadyExists interface {
 	error
@@ -47,4 +49,8 @@ func IsErrorAlreadyExists(err error) bool {
 
 func (err *AlreadyExistsError) Unwrap() error {
 	return err.XError
+}
+
+func (err *AlreadyExistsError) HttpStatusCode() int {
+	return http.StatusConflict
 }

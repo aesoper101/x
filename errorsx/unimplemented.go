@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // Unimplemented 是未实现错误
+// 对应状态码 501
 // 用于表示未实现的功能，比如未实现的接口方法
 type Unimplemented interface {
 	error
@@ -48,4 +50,8 @@ func (err *UnimplementedError) Is(target error) bool {
 
 func (err *UnimplementedError) Unwrap() error {
 	return err.XError
+}
+
+func (err *UnimplementedError) HttpStatusCode() int {
+	return http.StatusNotImplemented
 }

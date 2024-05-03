@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // Unavailable 是不可用错误
+// 对应于 HTTP 状态码 503
 // 例如：服务不可用，资源不可用等
 type Unavailable interface {
 	error
@@ -48,4 +50,8 @@ func (err *UnavailableError) Is(target error) bool {
 
 func (err *UnavailableError) Unwrap() error {
 	return err.XError
+}
+
+func (err *UnavailableError) HttpStatusCode() int {
+	return http.StatusServiceUnavailable
 }

@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // PermissionDenied 是权限拒绝的错误
+// 对应 HTTP 状态码：403
 //
 // 权限拒绝的错误，通常表示用户没有权限执行某些操作。
 //
@@ -54,4 +56,8 @@ func (err *PermissionDeniedError) Is(target error) bool {
 
 func (err *PermissionDeniedError) Unwrap() error {
 	return err.XError
+}
+
+func (err *PermissionDeniedError) HttpStatusCode() int {
+	return http.StatusForbidden
 }

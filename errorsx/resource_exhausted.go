@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // ResourceExhausted 是资源耗尽的错误
+// 对应于 HTTP 状态码 429 Too Many Requests
 // 例如：数据库连接池已满，内存不足等
 type ResourceExhausted interface {
 	error
@@ -48,4 +50,8 @@ func (err *ResourceExhaustedError) Is(target error) bool {
 
 func (err *ResourceExhaustedError) Unwrap() error {
 	return err.XError
+}
+
+func (err *ResourceExhaustedError) HttpStatusCode() int {
+	return http.StatusTooManyRequests
 }

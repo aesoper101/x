@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // Internal 接口用于标识内部错误，
+// 对应状态码 500
 // 内部错误通常表示程序逻辑错误，
 // 内部错误通常不应该被用户看到，
 type Internal interface {
@@ -49,4 +51,8 @@ func (err *InternalError) Is(target error) bool {
 
 func (err *InternalError) Unwrap() error {
 	return err.XError
+}
+
+func (err *InternalError) HttpStatusCode() int {
+	return http.StatusInternalServerError
 }

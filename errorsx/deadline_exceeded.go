@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // DeadlineExceeded 是操作超时错误。
+// 对应 HTTP 状态码为 408。
 // 操作超时错误，通常是因为资源被其他进程占用，或者操作本身需要很长时间。
 type DeadlineExceeded interface {
 	error
@@ -48,4 +50,8 @@ func (err *DeadlineExceededError) Is(target error) bool {
 
 func (err *DeadlineExceededError) Unwrap() error {
 	return err.XError
+}
+
+func (err *DeadlineExceededError) HttpStatusCode() int {
+	return http.StatusRequestTimeout
 }

@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,7 +12,9 @@ var (
 )
 
 // PreconditionFailed 是前置条件失败的错误接口
+// 对应 HTTP 状态码 412
 // 用于表示前置条件不满足，导致当前操作无法继续执行
+// 例如：资源 xxx 是非空目录，因此无法删除。
 type PreconditionFailed interface {
 	error
 	IsPreconditionFailed()
@@ -48,4 +51,8 @@ func (err *PreconditionFailedError) Is(target error) bool {
 
 func (err *PreconditionFailedError) Unwrap() error {
 	return err.XError
+}
+
+func (err *PreconditionFailedError) HttpStatusCode() int {
+	return http.StatusPreconditionFailed
 }

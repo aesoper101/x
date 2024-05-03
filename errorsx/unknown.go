@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // Unknown 未知错误
+// 对应Http 500
 // 未知错误，通常用于表示无法识别的错误
 type Unknown interface {
 	error
@@ -48,4 +50,8 @@ func (err *UnknownError) Is(target error) bool {
 
 func (err *UnknownError) Unwrap() error {
 	return err.XError
+}
+
+func (err *UnknownError) HttpStatusCode() int {
+	return http.StatusInternalServerError
 }

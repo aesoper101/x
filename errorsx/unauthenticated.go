@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 // Unauthenticated 是未认证的错误。
+// 对应于 HTTP 401 Unauthorized。
 // 用于表示用户未登录、未授权等。
 type Unauthenticated interface {
 	error
@@ -48,4 +50,8 @@ func (err *UnauthenticatedError) Is(target error) bool {
 
 func (err *UnauthenticatedError) Unwrap() error {
 	return err.XError
+}
+
+func (err *UnauthenticatedError) HttpStatusCode() int {
+	return http.StatusUnauthorized
 }

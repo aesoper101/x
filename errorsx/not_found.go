@@ -3,9 +3,11 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 // NotFound 是未找到的错误
+// 对应 HTTP 状态码：404 Not Found
 // 未找到的错误，通常表示请求的资源不存在。
 // 例如：用户不存在，或者请求的资源不存在。
 type NotFound interface {
@@ -44,4 +46,8 @@ func (err *NotFoundError) Is(target error) bool {
 
 func (err *NotFoundError) Unwrap() error {
 	return err.XError
+}
+
+func (err *NotFoundError) HttpStatusCode() int {
+	return http.StatusNotFound
 }

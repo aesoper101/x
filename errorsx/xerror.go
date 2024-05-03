@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 )
 
@@ -12,6 +13,7 @@ type XError struct {
 	Parent  error
 	Message string
 	ID      string
+	Details map[string]string
 }
 
 func New(code string, message string) *XError {
@@ -28,6 +30,11 @@ func Wrap(parent error, code string, message string) *XError {
 
 func WrapF(parent error, code string, format string, args ...interface{}) *XError {
 	return &XError{Parent: parent, ID: code, Message: fmt.Sprintf(format, args...)}
+}
+
+func IsXError(err error) bool {
+	var e *XError
+	return errors.As(err, &e)
 }
 
 func (e *XError) GetMessage() string {
@@ -84,4 +91,31 @@ func (e *XError) As(target interface{}) bool {
 
 func (e *XError) ResetMessage(message string) {
 	e.Message = message
+}
+
+func (e *XError) SetDetails(details map[string]string) {
+	if e.Details == nil {
+		e.Details = make(map[string]string)
+	}
+	for k, v := range details {
+		e.Details[k] = v
+	}
+}
+
+func (e *XError) GetDetails() map[string]string {
+	details := make(map[string]string)
+	for k, v := range e.Details {
+		details[k] = v
+	}
+	return details
+}
+
+func (e *XError) HttpStatusCode() int {
+	if e.Parent != nil {
+		var p *XError
+		if errors.As(e.Parent, &p) {
+			return p.HttpStatusCode()
+		}
+	}
+	return http.StatusInternalServerError
 }

@@ -3,6 +3,7 @@ package errorsx
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -11,7 +12,9 @@ var (
 )
 
 // InvalidArgument 参数错误
+// 对应 HTTP 状态码：400 Bad Request
 // 参数错误，例如：参数为空、参数格式不正确等
+// 请求字段 x.y.z 是 xxx，预期为 [yyy, zzz] 内的一个。
 type InvalidArgument interface {
 	error
 	IsInvalidArgument()
@@ -48,4 +51,8 @@ func (err *InvalidArgumentError) Is(target error) bool {
 
 func (err *InvalidArgumentError) Unwrap() error {
 	return err.XError
+}
+
+func (err *InvalidArgumentError) HttpStatusCode() int {
+	return http.StatusBadRequest
 }
