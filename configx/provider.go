@@ -461,5 +461,8 @@ func (p *Provider) UnmarshalWithConf(path string, o interface{}, c koanf.Unmarsh
 			WeaklyTypedInput: true,
 		}
 	}
+	if c.Tag == "" {
+		c.Tag = "json"
+	}
 	return p.Koanf.UnmarshalWithConf(path, o, c)
 }
