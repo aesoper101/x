@@ -16,30 +16,30 @@ func TernaryF[T any](condition bool, ifFunc, elseFunc func() T) T {
 	return elseFunc()
 }
 
-type ifElse[T any] struct {
+type IfElse[T any] struct {
 	result T
 	done   bool
 }
 
-func If[T any](condition bool, result T) *ifElse[T] {
+func If[T any](condition bool, result T) *IfElse[T] {
 	if condition {
-		return &ifElse[T]{result, true}
+		return &IfElse[T]{result, true}
 	}
 
 	var t T
-	return &ifElse[T]{t, false}
+	return &IfElse[T]{t, false}
 }
 
-func IfF[T any](condition bool, resultF func() T) *ifElse[T] {
+func IfF[T any](condition bool, resultF func() T) *IfElse[T] {
 	if condition {
-		return &ifElse[T]{resultF(), true}
+		return &IfElse[T]{resultF(), true}
 	}
 
 	var t T
-	return &ifElse[T]{t, false}
+	return &IfElse[T]{t, false}
 }
 
-func (i *ifElse[T]) ElseIf(condition bool, result T) *ifElse[T] {
+func (i *IfElse[T]) ElseIf(condition bool, result T) *IfElse[T] {
 	if !i.done && condition {
 		i.result = result
 		i.done = true
@@ -48,7 +48,7 @@ func (i *ifElse[T]) ElseIf(condition bool, result T) *ifElse[T] {
 	return i
 }
 
-func (i *ifElse[T]) ElseIfF(condition bool, resultF func() T) *ifElse[T] {
+func (i *IfElse[T]) ElseIfF(condition bool, resultF func() T) *IfElse[T] {
 	if !i.done && condition {
 		i.result = resultF()
 		i.done = true
@@ -57,7 +57,7 @@ func (i *ifElse[T]) ElseIfF(condition bool, resultF func() T) *ifElse[T] {
 	return i
 }
 
-func (i *ifElse[T]) Else(result T) T {
+func (i *IfElse[T]) Else(result T) T {
 	if i.done {
 		return i.result
 	}
@@ -65,7 +65,7 @@ func (i *ifElse[T]) Else(result T) T {
 	return result
 }
 
-func (i *ifElse[T]) ElseF(resultF func() T) T {
+func (i *IfElse[T]) ElseF(resultF func() T) T {
 	if i.done {
 		return i.result
 	}
@@ -73,23 +73,23 @@ func (i *ifElse[T]) ElseF(resultF func() T) T {
 	return resultF()
 }
 
-type switchCase[T comparable, R any] struct {
+type SwitchCase[T comparable, R any] struct {
 	predicate T
 	result    R
 	done      bool
 }
 
-func Switch[T comparable, R any](predicate T) *switchCase[T, R] {
+func Switch[T comparable, R any](predicate T) *SwitchCase[T, R] {
 	var result R
 
-	return &switchCase[T, R]{
+	return &SwitchCase[T, R]{
 		predicate,
 		result,
 		false,
 	}
 }
 
-func (s *switchCase[T, R]) Case(val T, result R) *switchCase[T, R] {
+func (s *SwitchCase[T, R]) Case(val T, result R) *SwitchCase[T, R] {
 	if !s.done && s.predicate == val {
 		s.result = result
 		s.done = true
@@ -98,7 +98,7 @@ func (s *switchCase[T, R]) Case(val T, result R) *switchCase[T, R] {
 	return s
 }
 
-func (s *switchCase[T, R]) CaseF(val T, cb func() R) *switchCase[T, R] {
+func (s *SwitchCase[T, R]) CaseF(val T, cb func() R) *SwitchCase[T, R] {
 	if !s.done && s.predicate == val {
 		s.result = cb()
 		s.done = true
@@ -107,7 +107,7 @@ func (s *switchCase[T, R]) CaseF(val T, cb func() R) *switchCase[T, R] {
 	return s
 }
 
-func (s *switchCase[T, R]) Default(result R) R {
+func (s *SwitchCase[T, R]) Default(result R) R {
 	if !s.done {
 		s.result = result
 	}
@@ -115,7 +115,7 @@ func (s *switchCase[T, R]) Default(result R) R {
 	return s.result
 }
 
-func (s *switchCase[T, R]) DefaultF(cb func() R) R {
+func (s *SwitchCase[T, R]) DefaultF(cb func() R) R {
 	if !s.done {
 		s.result = cb()
 	}
