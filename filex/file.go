@@ -100,7 +100,7 @@ func IfIsRegular(path string, fn func() error) error {
 // MkdirIfNotExist creates a directory if it does not exist.
 func MkdirIfNotExist(dir string) error {
 	return IfNotExists(dir, func(dir string) error {
-		return os.MkdirAll(dir, os.ModeDir)
+		return os.MkdirAll(dir, os.ModePerm)
 	})
 }
 
