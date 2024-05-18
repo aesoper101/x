@@ -1,8 +1,9 @@
 package str
 
 import (
-	"github.com/iancoleman/strcase"
 	"unicode"
+
+	"github.com/iancoleman/strcase"
 )
 
 // UcFirst returns a copy of s with each word capitalized.
@@ -54,6 +55,6 @@ func ToScreamingDelimited(s string, delimiter uint8, ignore string, screaming bo
 	return strcase.ToScreamingDelimited(s, delimiter, ignore, screaming)
 }
 
-func ToSnakeWithIgnore(s string, ignore string) string {
+func ToSnakeWithIgnore(s, ignore string) string {
 	return strcase.ToSnakeWithIgnore(s, ignore)
 }

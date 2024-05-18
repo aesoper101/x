@@ -1,12 +1,13 @@
 package golangx
 
 import (
-	"github.com/aesoper101/x/str"
-	"golang.org/x/mod/modfile"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/aesoper101/x/str"
+	"golang.org/x/mod/modfile"
 )
 
 // IsGoFile checks if the given file is a go file

@@ -66,7 +66,7 @@ func (t *TestConfig1) UnmarshalJSON(bytes []byte) error {
 		return err
 	}
 	*t = TestConfig1(data)
-	//t.open()
+	// t.open()
 	fmt.Println("UnmarshalJSON1")
 	return nil
 }
@@ -111,5 +111,4 @@ func TestNew(t *testing.T) {
 	}
 	t.Log(string(bytes))
 	t.Log(reflect.TypeOf(config.Provider.Config))
-
 }

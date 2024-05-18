@@ -1,10 +1,11 @@
 package templatex
 
 import (
-	"github.com/Masterminds/sprig/v3"
-	"github.com/iancoleman/strcase"
 	"text/template"
 	ttemplate "text/template"
+
+	"github.com/Masterminds/sprig/v3"
+	"github.com/iancoleman/strcase"
 )
 
 var defaultFuncMaps = template.FuncMap{

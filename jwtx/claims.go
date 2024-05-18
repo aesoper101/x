@@ -2,8 +2,9 @@ package jwtx
 
 import (
 	"errors"
-	"github.com/aesoper101/x/mapx"
 	"time"
+
+	"github.com/aesoper101/x/mapx"
 )
 
 // Claims represents a JSON Web Token's standard claims.

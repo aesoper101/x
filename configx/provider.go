@@ -3,18 +3,19 @@ package configx
 import (
 	"context"
 	"fmt"
-	"github.com/go-viper/mapstructure/v2"
-	"github.com/inhies/go-bytesize"
-	"github.com/knadh/koanf/providers/env"
-	"github.com/knadh/koanf/providers/posflag"
-	"github.com/knadh/koanf/v2"
-	"github.com/spf13/pflag"
 	"log/slog"
 	"net/url"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/inhies/go-bytesize"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
+	"github.com/spf13/pflag"
 )
 
 type tuple struct {
@@ -295,7 +296,7 @@ func (p *Provider) BoolF(key string, fallback bool) bool {
 	return p.Bool(key)
 }
 
-func (p *Provider) StringF(key string, fallback string) string {
+func (p *Provider) StringF(key, fallback string) string {
 	p.l.RLock()
 	defer p.l.RUnlock()
 

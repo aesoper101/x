@@ -15,19 +15,19 @@ type XError struct {
 	details map[string]interface{}
 }
 
-func New(reason string, message string) *XError {
+func New(reason, message string) *XError {
 	return &XError{reason: reason, message: message}
 }
 
-func NewF(reason string, format string, args ...interface{}) *XError {
+func NewF(reason, format string, args ...interface{}) *XError {
 	return &XError{reason: reason, message: fmt.Sprintf(format, args...)}
 }
 
-func Wrap(cause error, reason string, message string) *XError {
+func Wrap(cause error, reason, message string) *XError {
 	return &XError{cause: cause, reason: reason, message: message}
 }
 
-func WrapF(cause error, reason string, format string, args ...interface{}) *XError {
+func WrapF(cause error, reason, format string, args ...interface{}) *XError {
 	return &XError{cause: cause, reason: reason, message: fmt.Sprintf(format, args...)}
 }
 

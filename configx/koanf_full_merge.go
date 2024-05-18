@@ -2,6 +2,7 @@ package configx
 
 import (
 	"encoding/json"
+
 	"github.com/aesoper101/x/jsonx"
 
 	"github.com/pkg/errors"

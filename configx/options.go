@@ -2,10 +2,11 @@ package configx
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/knadh/koanf/v2"
 	"github.com/spf13/pflag"
-	"log/slog"
 )
 
 type ProviderOptions func(p *Provider)

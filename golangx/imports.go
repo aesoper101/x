@@ -2,18 +2,19 @@ package golangx
 
 import (
 	"fmt"
-	"github.com/aesoper101/x/filex"
 	"go/ast"
 	"go/build"
 	"go/parser"
 	"go/token"
-	"golang.org/x/tools/go/ast/astutil"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/aesoper101/x/filex"
+
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 // ImportSpec represents a single import spec.
@@ -157,7 +158,7 @@ func NameForDir(dir string) string {
 	if err != nil {
 		return SanitizePackageName(filepath.Base(dir))
 	}
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return SanitizePackageName(filepath.Base(dir))
 	}

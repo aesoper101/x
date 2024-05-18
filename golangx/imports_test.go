@@ -1,17 +1,17 @@
 package golangx
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go/parser"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-var (
-	testSrc = `
+var testSrc = `
 package foo
 
 import (
@@ -23,7 +23,6 @@ import (
 func bar() {
 	fmt.Println(time.Now())
 }`
-)
 
 func TestCollectImports(t *testing.T) {
 	p := MustParser(NewParser("", testSrc, parser.ParseComments))
@@ -41,7 +40,6 @@ func TestRemoveUnusedImports(t *testing.T) {
 	p := MustParser(NewParser("", testSrc, parser.ParseComments))
 
 	RemoveUnusedImports(p)
-
 }
 
 func TestIsInvalidPackageName(t *testing.T) {

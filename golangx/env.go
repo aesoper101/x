@@ -1,13 +1,14 @@
 package golangx
 
 import (
-	"github.com/aesoper101/x/filex"
-	"github.com/aesoper101/x/str"
 	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/aesoper101/x/filex"
+	"github.com/aesoper101/x/str"
 )
 
 var defaultGoProxy = "https://goproxy.cn,direct"

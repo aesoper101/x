@@ -3,9 +3,11 @@ module github.com/aesoper101/x
 go 1.22
 
 require (
+	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/go-viper/mapstructure/v2 v2.0.0-alpha.1
+	github.com/iancoleman/strcase v0.3.0
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
 	github.com/knadh/koanf/maps v0.1.1
 	github.com/knadh/koanf/parsers/json v0.1.0
@@ -19,18 +21,18 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/gjson v1.17.1
 	github.com/tidwall/sjson v1.2.5
+	golang.org/x/mod v0.8.0
 	golang.org/x/sync v0.7.0
+	golang.org/x/tools v0.6.0
 )
 
 require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
-	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/huandu/xstrings v1.3.3 // indirect
-	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect

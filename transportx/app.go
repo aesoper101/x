@@ -3,13 +3,14 @@ package transportx
 import (
 	"context"
 	"errors"
-	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Server interface {

@@ -2,9 +2,10 @@ package jsonx
 
 import (
 	"encoding/json"
-	"github.com/tidwall/gjson"
 	"strconv"
 	"strings"
+
+	"github.com/tidwall/gjson"
 )
 
 func Flatten(raw json.RawMessage) map[string]interface{} {

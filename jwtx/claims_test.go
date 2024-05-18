@@ -10,7 +10,6 @@ import (
 )
 
 func TestParseMapStringInterfaceClaims(t *testing.T) {
-
 	assert.EqualValues(t, &Claims{
 		JTI:       "jti",
 		Subject:   "sub",

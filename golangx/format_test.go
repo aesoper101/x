@@ -2,9 +2,10 @@ package golangx
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"go/parser"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFormatCodeFromSource(t *testing.T) {

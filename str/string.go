@@ -38,7 +38,7 @@ func InArray[T comparable](needle T, haystack []T) bool {
 }
 
 // Substring returns a substring of a string.
-func Substring(s string, start int, end int) (string, error) {
+func Substring(s string, start, end int) (string, error) {
 	runes := []rune(s)
 	if start < 0 || start > len(s) {
 		return "", fmt.Errorf("start index out of range")

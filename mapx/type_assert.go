@@ -135,7 +135,6 @@ func GetInt(values map[interface{}]interface{}, key interface{}) (int, error) {
 		return int(v), err
 	}
 	return 0, ErrKeyCanNotBeTypeAsserted
-
 }
 
 // GetFloat32Default returns a float32 or the default value for a given key in values.

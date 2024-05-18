@@ -1,4 +1,3 @@
 package golangx
 
-type Node struct {
-}
+type Node struct{}

@@ -3,6 +3,7 @@ package configx
 import (
 	"bytes"
 	"encoding/json"
+
 	"github.com/knadh/koanf/maps"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"

@@ -2,12 +2,13 @@ package configx
 
 import (
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 
 	"github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/parsers/toml"

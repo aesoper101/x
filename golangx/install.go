@@ -2,10 +2,11 @@ package golangx
 
 import (
 	"fmt"
-	"github.com/aesoper101/x/execx"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/aesoper101/x/execx"
 )
 
 // GoInstall is a functionx that installs a package from a remote repository.

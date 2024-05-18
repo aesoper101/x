@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"go/ast"
 	"go/format"
-	"golang.org/x/tools/imports"
 	"io"
+
+	"golang.org/x/tools/imports"
 )
 
 // FormatCodeFromSource formats the given source code.

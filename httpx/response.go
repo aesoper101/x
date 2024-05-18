@@ -2,16 +2,15 @@ package httpx
 
 import (
 	"errors"
-	"github.com/aesoper101/x/errorsx"
 	"net/http"
 	"time"
+
+	"github.com/aesoper101/x/errorsx"
 )
 
-var (
-	defaultConvertErrorFunc ConvertErrorFunc = func(err error) errorsx.Error {
-		return errorsx.ThrowUnknown(err, "", err.Error()).(errorsx.Error)
-	}
-)
+var defaultConvertErrorFunc ConvertErrorFunc = func(err error) errorsx.Error {
+	return errorsx.ThrowUnknown(err, "", err.Error()).(errorsx.Error)
+}
 
 func SetDefaultConvertErrorFunc(f ConvertErrorFunc) {
 	defaultConvertErrorFunc = f

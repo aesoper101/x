@@ -26,7 +26,7 @@ func ThrowAlreadyExists(cause error, reason, message string) error {
 }
 
 func ThrowAlreadyExistsF(cause error, reason, format string, a ...interface{}) error {
-	return &AlreadyExistsError{WrapF(cause, reason, format, a)}
+	return &AlreadyExistsError{WrapF(cause, reason, format, a...)}
 }
 
 func (err *AlreadyExistsError) IsAlreadyExists() {}

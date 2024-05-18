@@ -4,12 +4,13 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
-	"github.com/go-viper/mapstructure/v2"
-	"github.com/pkg/errors"
 	"net/mail"
 	"net/url"
 	"reflect"
 	"regexp"
+
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -18,9 +19,7 @@ const (
 	errFmtDecodeHookCouldNotParseEmptyValue = "could not decode an empty value to a %s%s: %w"
 )
 
-var (
-	errDecodeNonPtrMustHaveValue = errors.New("must have a non-empty value")
-)
+var errDecodeNonPtrMustHaveValue = errors.New("must have a non-empty value")
 
 func TextUnmarshalerHookFunc() mapstructure.DecodeHookFuncType {
 	return func(
@@ -123,7 +122,7 @@ func JsonUnmarshalerHookFunc() mapstructure.DecodeHookFuncType {
 }
 
 func StringToURLHookFunc() mapstructure.DecodeHookFuncType {
-	return func(f reflect.Type, t reflect.Type, data any) (value any, err error) {
+	return func(f, t reflect.Type, data any) (value any, err error) {
 		var ptr bool
 
 		if f.Kind() != reflect.String {
@@ -168,7 +167,7 @@ func StringToURLHookFunc() mapstructure.DecodeHookFuncType {
 }
 
 func StringToMailAddressHookFunc() mapstructure.DecodeHookFuncType {
-	return func(f reflect.Type, t reflect.Type, data any) (value any, err error) {
+	return func(f, t reflect.Type, data any) (value any, err error) {
 		var ptr bool
 
 		if f.Kind() != reflect.String {
@@ -213,7 +212,7 @@ func StringToMailAddressHookFunc() mapstructure.DecodeHookFuncType {
 }
 
 func StringToRegexpHookFunc() mapstructure.DecodeHookFuncType {
-	return func(f reflect.Type, t reflect.Type, data any) (value any, err error) {
+	return func(f, t reflect.Type, data any) (value any, err error) {
 		var ptr bool
 
 		if f.Kind() != reflect.String {
