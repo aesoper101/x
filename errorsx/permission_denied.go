@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -29,12 +28,12 @@ type PermissionDeniedError struct {
 	*XError
 }
 
-func ThrowPermissionDenied(parent error, id, message string) error {
-	return &PermissionDeniedError{Wrap(parent, id, message)}
+func ThrowPermissionDenied(cause error, reason, message string) error {
+	return &PermissionDeniedError{Wrap(cause, reason, message)}
 }
 
-func ThrowPermissionDeniedF(parent error, id, format string, a ...interface{}) error {
-	return ThrowPermissionDenied(parent, id, fmt.Sprintf(format, a...))
+func ThrowPermissionDeniedF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowPermissionDenied(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *PermissionDeniedError) IsPermissionDenied() {}
@@ -58,6 +57,6 @@ func (err *PermissionDeniedError) Unwrap() error {
 	return err.XError
 }
 
-func (err *PermissionDeniedError) HttpStatusCode() int {
-	return http.StatusForbidden
+func (err *PermissionDeniedError) Cause() error {
+	return err.XError
 }

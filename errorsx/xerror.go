@@ -3,33 +3,32 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"reflect"
 )
 
 var _ Error = (*XError)(nil)
 
 type XError struct {
-	Parent  error
-	Message string
-	ID      string
-	Details map[string]string
+	cause   error
+	message string
+	reason  string
+	details map[string]interface{}
 }
 
-func New(code string, message string) *XError {
-	return &XError{ID: code, Message: message}
+func New(reason string, message string) *XError {
+	return &XError{reason: reason, message: message}
 }
 
-func NewF(code string, format string, args ...interface{}) *XError {
-	return &XError{ID: code, Message: fmt.Sprintf(format, args...)}
+func NewF(reason string, format string, args ...interface{}) *XError {
+	return &XError{reason: reason, message: fmt.Sprintf(format, args...)}
 }
 
-func Wrap(parent error, code string, message string) *XError {
-	return &XError{Parent: parent, ID: code, Message: message}
+func Wrap(cause error, reason string, message string) *XError {
+	return &XError{cause: cause, reason: reason, message: message}
 }
 
-func WrapF(parent error, code string, format string, args ...interface{}) *XError {
-	return &XError{Parent: parent, ID: code, Message: fmt.Sprintf(format, args...)}
+func WrapF(cause error, reason string, format string, args ...interface{}) *XError {
+	return &XError{cause: cause, reason: reason, message: fmt.Sprintf(format, args...)}
 }
 
 func IsXError(err error) bool {
@@ -37,28 +36,27 @@ func IsXError(err error) bool {
 	return errors.As(err, &e)
 }
 
-func (e *XError) GetMessage() string {
-	return e.Message
+func (e *XError) Message() string {
+	return e.message
 }
 
-func (e *XError) GetID() string {
-	return e.ID
+func (e *XError) Reason() string {
+	return e.reason
 }
 
-func (e *XError) GetParent() error {
-	return e.Parent
+func (e *XError) Cause() error {
+	return e.cause
 }
 
 func (e *XError) Error() string {
-	if e.Parent != nil {
-		return fmt.Sprintf("ID=%d Message=%s Parent=(%v)", e.ID, e.Message, e.Parent)
+	if e.Cause() != nil {
+		return fmt.Sprintf("reason=%s message=%s cause=%s", e.reason, e.message, e.Cause())
 	}
-
-	return fmt.Sprintf("ID=%d Message=%s", e.ID, e.Message)
+	return fmt.Sprintf("reason=%s message=%s", e.reason, e.message)
 }
 
 func (e *XError) Unwrap() error {
-	return e.Parent
+	return e.Cause()
 }
 
 func (e *XError) Is(target error) bool {
@@ -67,13 +65,13 @@ func (e *XError) Is(target error) bool {
 	if !ok {
 		return false
 	}
-	if t.ID != "" && t.ID != e.ID {
+	if t.reason != "" && t.reason != e.reason {
 		return false
 	}
-	if t.Message != "" && t.Message != e.Message {
+	if t.message != "" && t.message != e.message {
 		return false
 	}
-	if t.Parent != nil && !errors.Is(e.Parent, t.Parent) {
+	if t.Cause() != nil && !errors.Is(e.Cause(), t.Cause()) {
 		return false
 	}
 
@@ -89,33 +87,23 @@ func (e *XError) As(target interface{}) bool {
 	return true
 }
 
-func (e *XError) ResetMessage(message string) {
-	e.Message = message
+func (e *XError) WithMessage(message string) {
+	e.message = message
 }
 
-func (e *XError) SetDetails(details map[string]string) {
-	if e.Details == nil {
-		e.Details = make(map[string]string)
+func (e *XError) WithDetails(details map[string]interface{}) {
+	if e.details == nil {
+		e.details = make(map[string]interface{})
 	}
 	for k, v := range details {
-		e.Details[k] = v
+		e.details[k] = v
 	}
 }
 
-func (e *XError) GetDetails() map[string]string {
-	details := make(map[string]string)
-	for k, v := range e.Details {
+func (e *XError) Details() map[string]interface{} {
+	details := make(map[string]interface{})
+	for k, v := range e.details {
 		details[k] = v
 	}
 	return details
-}
-
-func (e *XError) HttpStatusCode() int {
-	if e.Parent != nil {
-		var p *XError
-		if errors.As(e.Parent, &p) {
-			return p.HttpStatusCode()
-		}
-	}
-	return http.StatusInternalServerError
 }

@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -23,12 +22,12 @@ type DeadlineExceededError struct {
 	*XError
 }
 
-func ThrowDeadlineExceeded(parent error, id, message string) error {
-	return &DeadlineExceededError{Wrap(parent, id, message)}
+func ThrowDeadlineExceeded(cause error, reason, message string) error {
+	return &DeadlineExceededError{Wrap(cause, reason, message)}
 }
 
-func ThrowDeadlineExceededF(parent error, id, format string, a ...interface{}) error {
-	return ThrowDeadlineExceeded(parent, id, fmt.Sprintf(format, a...))
+func ThrowDeadlineExceededF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowDeadlineExceeded(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *DeadlineExceededError) IsDeadlineExceeded() {}
@@ -52,6 +51,6 @@ func (err *DeadlineExceededError) Unwrap() error {
 	return err.XError
 }
 
-func (err *DeadlineExceededError) HttpStatusCode() int {
-	return http.StatusRequestTimeout
+func (err *DeadlineExceededError) Cause() error {
+	return err.XError
 }

@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -23,12 +22,12 @@ type UnavailableError struct {
 	*XError
 }
 
-func ThrowUnavailable(parent error, id, message string) error {
-	return &UnavailableError{Wrap(parent, id, message)}
+func ThrowUnavailable(cause error, reason, message string) error {
+	return &UnavailableError{Wrap(cause, reason, message)}
 }
 
-func ThrowUnavailableF(parent error, id, format string, a ...interface{}) error {
-	return ThrowUnavailable(parent, id, fmt.Sprintf(format, a...))
+func ThrowUnavailableF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowUnavailable(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *UnavailableError) IsUnavailable() {}
@@ -52,6 +51,6 @@ func (err *UnavailableError) Unwrap() error {
 	return err.XError
 }
 
-func (err *UnavailableError) HttpStatusCode() int {
-	return http.StatusServiceUnavailable
+func (err *UnavailableError) Cause() error {
+	return err.XError
 }

@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -23,12 +22,12 @@ type UnknownError struct {
 	*XError
 }
 
-func ThrowUnknown(parent error, id, message string) error {
-	return &UnknownError{Wrap(parent, id, message)}
+func ThrowUnknown(cause error, reason, message string) error {
+	return &UnknownError{Wrap(cause, reason, message)}
 }
 
-func ThrowUnknownF(parent error, id, format string, a ...interface{}) error {
-	return ThrowUnknown(parent, id, fmt.Sprintf(format, a...))
+func ThrowUnknownF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowUnknown(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *UnknownError) IsUnknown() {}
@@ -52,6 +51,6 @@ func (err *UnknownError) Unwrap() error {
 	return err.XError
 }
 
-func (err *UnknownError) HttpStatusCode() int {
-	return http.StatusInternalServerError
+func (err *UnknownError) Cause() error {
+	return err.XError
 }

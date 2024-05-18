@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 // NotFound 是未找到的错误
@@ -19,12 +18,12 @@ type NotFoundError struct {
 	*XError
 }
 
-func ThrowNotFound(parent error, id, message string) error {
-	return &NotFoundError{Wrap(parent, id, message)}
+func ThrowNotFound(cause error, reason, message string) error {
+	return &NotFoundError{Wrap(cause, reason, message)}
 }
 
-func ThrowNotFoundF(parent error, id, format string, a ...interface{}) error {
-	return ThrowNotFound(parent, id, fmt.Sprintf(format, a...))
+func ThrowNotFoundF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowNotFound(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *NotFoundError) IsNotFound() {}
@@ -48,6 +47,6 @@ func (err *NotFoundError) Unwrap() error {
 	return err.XError
 }
 
-func (err *NotFoundError) HttpStatusCode() int {
-	return http.StatusNotFound
+func (err *NotFoundError) Cause() error {
+	return err.XError
 }

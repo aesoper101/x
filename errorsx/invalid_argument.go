@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -24,12 +23,12 @@ type InvalidArgumentError struct {
 	*XError
 }
 
-func ThrowInvalidArgument(parent error, id, message string) error {
-	return &InvalidArgumentError{Wrap(parent, id, message)}
+func ThrowInvalidArgument(cause error, reason, message string) error {
+	return &InvalidArgumentError{Wrap(cause, reason, message)}
 }
 
-func ThrowInvalidArgumentF(parent error, id, format string, a ...interface{}) error {
-	return ThrowInvalidArgument(parent, id, fmt.Sprintf(format, a...))
+func ThrowInvalidArgumentF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowInvalidArgument(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *InvalidArgumentError) IsInvalidArgument() {}
@@ -53,6 +52,6 @@ func (err *InvalidArgumentError) Unwrap() error {
 	return err.XError
 }
 
-func (err *InvalidArgumentError) HttpStatusCode() int {
-	return http.StatusBadRequest
+func (err *InvalidArgumentError) Cause() error {
+	return err.XError
 }

@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -23,12 +22,12 @@ type UnauthenticatedError struct {
 	*XError
 }
 
-func ThrowUnauthenticated(parent error, id, message string) error {
-	return &UnauthenticatedError{Wrap(parent, id, message)}
+func ThrowUnauthenticated(cause error, reason, message string) error {
+	return &UnauthenticatedError{Wrap(cause, reason, message)}
 }
 
-func ThrowUnauthenticatedF(parent error, id, format string, a ...interface{}) error {
-	return ThrowUnauthenticated(parent, id, fmt.Sprintf(format, a...))
+func ThrowUnauthenticatedF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowUnauthenticated(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *UnauthenticatedError) IsUnauthenticated() {}
@@ -52,6 +51,6 @@ func (err *UnauthenticatedError) Unwrap() error {
 	return err.XError
 }
 
-func (err *UnauthenticatedError) HttpStatusCode() int {
-	return http.StatusUnauthorized
+func (err *UnauthenticatedError) Cause() error {
+	return err.XError
 }

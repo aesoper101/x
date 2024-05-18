@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -23,12 +22,12 @@ type UnimplementedError struct {
 	*XError
 }
 
-func ThrowUnimplemented(parent error, id, message string) error {
-	return &UnimplementedError{Wrap(parent, id, message)}
+func ThrowUnimplemented(cause error, reason, message string) error {
+	return &UnimplementedError{Wrap(cause, reason, message)}
 }
 
-func ThrowUnimplementedF(parent error, id, format string, a ...interface{}) error {
-	return ThrowUnimplemented(parent, id, fmt.Sprintf(format, a...))
+func ThrowUnimplementedF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowUnimplemented(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *UnimplementedError) IsUnimplemented() {}
@@ -52,6 +51,6 @@ func (err *UnimplementedError) Unwrap() error {
 	return err.XError
 }
 
-func (err *UnimplementedError) HttpStatusCode() int {
-	return http.StatusNotImplemented
+func (err *UnimplementedError) Cause() error {
+	return err.XError
 }

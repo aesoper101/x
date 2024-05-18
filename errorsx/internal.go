@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -24,12 +23,12 @@ type InternalError struct {
 	*XError
 }
 
-func ThrowInternal(parent error, id, message string) error {
-	return &InternalError{Wrap(parent, id, message)}
+func ThrowInternal(cause error, reason, message string) error {
+	return &InternalError{Wrap(cause, reason, message)}
 }
 
-func ThrowInternalF(parent error, id, format string, a ...interface{}) error {
-	return ThrowInternal(parent, id, fmt.Sprintf(format, a...))
+func ThrowInternalF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowInternal(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *InternalError) IsInternal() {}
@@ -46,13 +45,18 @@ func (err *InternalError) Is(target error) bool {
 	if !ok {
 		return false
 	}
+
 	return err.XError.Is(t.XError)
+}
+
+func (err *InternalError) Error() string {
+	return fmt.Sprintf("InternalError: reason=%s, message=%s", err.Reason(), err.Message())
 }
 
 func (err *InternalError) Unwrap() error {
 	return err.XError
 }
 
-func (err *InternalError) HttpStatusCode() int {
-	return http.StatusInternalServerError
+func (err *InternalError) Cause() error {
+	return err.XError
 }

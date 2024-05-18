@@ -2,7 +2,6 @@ package errorsx
 
 import (
 	"errors"
-	"net/http"
 )
 
 var (
@@ -22,12 +21,12 @@ type AlreadyExistsError struct {
 	*XError
 }
 
-func ThrowAlreadyExists(parent error, id, message string) error {
-	return &AlreadyExistsError{Wrap(parent, id, message)}
+func ThrowAlreadyExists(cause error, reason, message string) error {
+	return &AlreadyExistsError{Wrap(cause, reason, message)}
 }
 
-func ThrowAlreadyExistsF(parent error, id, format string, a ...interface{}) error {
-	return &AlreadyExistsError{WrapF(parent, id, format, a)}
+func ThrowAlreadyExistsF(cause error, reason, format string, a ...interface{}) error {
+	return &AlreadyExistsError{WrapF(cause, reason, format, a)}
 }
 
 func (err *AlreadyExistsError) IsAlreadyExists() {}
@@ -51,6 +50,6 @@ func (err *AlreadyExistsError) Unwrap() error {
 	return err.XError
 }
 
-func (err *AlreadyExistsError) HttpStatusCode() int {
-	return http.StatusConflict
+func (err *AlreadyExistsError) Cause() error {
+	return err.XError
 }

@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -23,12 +22,12 @@ type ResourceExhaustedError struct {
 	*XError
 }
 
-func ThrowResourceExhausted(parent error, id, message string) error {
-	return &ResourceExhaustedError{Wrap(parent, id, message)}
+func ThrowResourceExhausted(cause error, reason, message string) error {
+	return &ResourceExhaustedError{Wrap(cause, reason, message)}
 }
 
-func ThrowResourceExhaustedF(parent error, id, format string, a ...interface{}) error {
-	return ThrowResourceExhausted(parent, id, fmt.Sprintf(format, a...))
+func ThrowResourceExhaustedF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowResourceExhausted(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *ResourceExhaustedError) IsResourceExhausted() {}
@@ -52,6 +51,6 @@ func (err *ResourceExhaustedError) Unwrap() error {
 	return err.XError
 }
 
-func (err *ResourceExhaustedError) HttpStatusCode() int {
-	return http.StatusTooManyRequests
+func (err *ResourceExhaustedError) Cause() error {
+	return err.XError
 }

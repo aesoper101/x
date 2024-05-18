@@ -3,7 +3,6 @@ package errorsx
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -24,12 +23,12 @@ type PreconditionFailedError struct {
 	*XError
 }
 
-func ThrowPreconditionFailed(parent error, id, message string) error {
-	return &PreconditionFailedError{Wrap(parent, id, message)}
+func ThrowPreconditionFailed(cause error, reason, message string) error {
+	return &PreconditionFailedError{Wrap(cause, reason, message)}
 }
 
-func ThrowPreconditionFailedF(parent error, id, format string, a ...interface{}) error {
-	return ThrowPreconditionFailed(parent, id, fmt.Sprintf(format, a...))
+func ThrowPreconditionFailedF(cause error, reason, format string, a ...interface{}) error {
+	return ThrowPreconditionFailed(cause, reason, fmt.Sprintf(format, a...))
 }
 
 func (err *PreconditionFailedError) IsPreconditionFailed() {}
@@ -53,6 +52,6 @@ func (err *PreconditionFailedError) Unwrap() error {
 	return err.XError
 }
 
-func (err *PreconditionFailedError) HttpStatusCode() int {
-	return http.StatusPreconditionFailed
+func (err *PreconditionFailedError) Cause() error {
+	return err.XError
 }
