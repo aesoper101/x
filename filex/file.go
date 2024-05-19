@@ -192,13 +192,12 @@ func AfterFileRead(filename string, callback func([]byte) error) error {
 }
 
 func IsReadableFile(path string) (bool, error) {
-	// Is it stattable and is it a plain file?
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil // Item does not exist.
+			return false, nil
 		}
-		return false, err // Item is problematic.
+		return false, err
 	}
 	if info.IsDir() {
 		return false, errors.New("is directory")
@@ -208,6 +207,6 @@ func IsReadableFile(path string) (bool, error) {
 	if err != nil {
 		return false, errors.New("permission denied")
 	}
-	fd.Close()
+	_ = fd.Close()
 	return true, nil // Item exists and is readable.
 }
