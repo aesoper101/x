@@ -183,10 +183,31 @@ func Getwd() string {
 
 // AfterFileRead is a function that executes a function when a file is read.
 func AfterFileRead(filename string, callback func([]byte) error) error {
-	bytes, err := os.ReadFile(filename)
+	bs, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
 
-	return callback(bytes)
+	return callback(bs)
+}
+
+func IsReadableFile(path string) (bool, error) {
+	// Is it stattable and is it a plain file?
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil // Item does not exist.
+		}
+		return false, err // Item is problematic.
+	}
+	if info.IsDir() {
+		return false, errors.New("is directory")
+	}
+	// Is it readable?
+	fd, err := os.Open(path)
+	if err != nil {
+		return false, errors.New("permission denied")
+	}
+	fd.Close()
+	return true, nil // Item exists and is readable.
 }
