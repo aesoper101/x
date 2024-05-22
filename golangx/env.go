@@ -104,3 +104,13 @@ func GoVersion() string {
 
 	return ""
 }
+
+// GoModCache returns the path of Go module cache.
+func GoModCache() string {
+	cacheOut, _ := exec.Command("go", "env", "GOMODCACHE").Output()
+	cachePath := strings.Trim(string(cacheOut), "\n")
+	if str.IsEmpty(cachePath) {
+		return filepath.Join(GoPath(), "pkg", "mod")
+	}
+	return cachePath
+}

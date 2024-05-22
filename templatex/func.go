@@ -18,6 +18,10 @@ var defaultFuncMaps = template.FuncMap{
 	"ToScreamingDelimited": strcase.ToScreamingDelimited,
 	"ToCamel":              strcase.ToCamel,
 	"ToLowerCamel":         strcase.ToLowerCamel,
+	"ToGo":                 ToGo,
+	"ToGoPrivate":          ToGoPrivate,
+	"ToGoModelName":        ToGoModelName,
+	"ToGoPrivateModelName": ToGoPrivateModelName,
 }
 
 func TxtFuncMap() ttemplate.FuncMap {

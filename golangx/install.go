@@ -2,10 +2,11 @@ package golangx
 
 import (
 	"fmt"
-	"github.com/aesoper101/x/execx"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/aesoper101/x/execx"
 )
 
 // GoInstall is a functionx that installs a package from a remote repository.
@@ -25,6 +26,11 @@ func GoInstall(repository string) error {
 
 	if !strings.Contains(repository, "@") {
 		repository += "@latest"
+	}
+
+	if strings.Contains(repository, "://") {
+		repository = strings.TrimPrefix(repository, "https://")
+		repository = strings.TrimPrefix(repository, "http://")
 	}
 
 	cmd := exec.Command("go", "install", repository)
