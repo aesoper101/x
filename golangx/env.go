@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/aesoper101/x/filex"
@@ -72,7 +73,7 @@ func IsGO111ModuleOn() bool {
 func GoPath() string {
 	path := os.Getenv("GOPATH")
 	if str.IsNotEmpty(path) {
-		return path
+		return splitGoPath(path)[0]
 	}
 
 	if output, _ := exec.Command("go", "env", "GOPATH").Output(); str.IsNotEmpty(string(output)) {
@@ -113,4 +114,17 @@ func GoModCache() string {
 		return filepath.Join(GoPath(), "pkg", "mod")
 	}
 	return cachePath
+}
+
+func splitGoPath(goPath string) []string {
+	var sep string
+	goos := strings.ToLower(runtime.GOOS)
+	switch goos {
+	case "windows":
+		sep = ";"
+	case "linux", "darwin":
+		sep = ":"
+	}
+
+	return strings.Split(goPath, sep)
 }
