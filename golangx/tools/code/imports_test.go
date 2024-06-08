@@ -10,5 +10,5 @@ import (
 func TestFindGoModuleRoot(t *testing.T) {
 	module, ok := goModuleRoot(filex.Getwd())
 	require.Equal(t, true, ok)
-	require.Equal(t, "github.com/aesoper101/x/golangx/code", module)
+	require.Equal(t, "github.com/aesoper101/x/golangx/tools/code", module)
 }
