@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 )
@@ -111,4 +113,23 @@ func TestNew(t *testing.T) {
 	}
 	t.Log(string(bytes))
 	t.Log(reflect.TypeOf(config.Provider.Config))
+}
+
+func TestDataFromBytes(t *testing.T) {
+	yamlData := []byte(`
+provider:
+  name: test1
+  env: ${GO111MODULE}
+server:
+  name: ${ provider.name }
+`)
+	p1 := NewKoanfMemoryWithParser(context.Background(), yamlData, yaml.Parser())
+	p, err := New(context.Background(), WithUserProviders(p1), EnableEnvLoading(""))
+
+	require.Nil(t, err)
+	require.NotNil(t, p)
+
+	require.Equal(t, "test1", p.String("provider.name"))
+	require.Equal(t, "test1", p.String("server.name"))
+	require.Equal(t, "on", p.String("provider.env"))
 }

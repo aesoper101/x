@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -176,6 +177,42 @@ func (p *Provider) newKoanf() (_ *koanf.Koanf, err error) {
 
 func (p *Provider) replaceKoanf(k *koanf.Koanf) {
 	p.Koanf = k
+	p.replaceVars(k)
+}
+
+func (p *Provider) replaceVars(k *koanf.Koanf) {
+	keys := k.Keys()
+
+	for _, key := range keys {
+		value := k.String(key)
+		if value == "" {
+			continue
+		}
+
+		reg := regexp.MustCompile(`\${([^}]+)}`)
+		matches := reg.FindAllStringSubmatch(value, -1)
+		for _, match := range matches {
+			if len(match) != 2 {
+				continue
+			}
+			// 替换值中存在的 ${} 包裹的变量
+			valPath := strings.TrimSpace(match[1])
+
+			if k.Exists(valPath) {
+				value = strings.Replace(value, match[0], k.String(valPath), -1)
+			} else if p.enableEnvLoading {
+				envKey := strings.Replace(strings.ToLower(
+					strings.TrimPrefix(valPath, p.envPrefix)), "_", ".", -1)
+				envVal := k.String(envKey)
+				if envVal != "" {
+					value = strings.Replace(value, match[0], envVal, -1)
+				}
+			}
+		}
+
+		_ = k.Set(key, value)
+	}
+
 }
 
 func (p *Provider) watchForFileChanges(ctx context.Context, c eventChanel) {
@@ -465,5 +502,6 @@ func (p *Provider) UnmarshalWithConf(path string, o interface{}, c koanf.Unmarsh
 	if c.Tag == "" {
 		c.Tag = "json"
 	}
+
 	return p.Koanf.UnmarshalWithConf(path, o, c)
 }
