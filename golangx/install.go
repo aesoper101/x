@@ -6,13 +6,13 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/aesoper101/x/execx"
+	"github.com/aesoper101/x/execext"
 )
 
 // GoInstall is a functionx that installs a package from a remote repository.
 // returns an error if something goes wrong.
 func GoInstall(repository string) error {
-	if err := execx.LookPath("go"); err != nil {
+	if err := execext.LookPath("go"); err != nil {
 		return err
 	}
 

@@ -1,6 +1,7 @@
 package golangx
 
 import (
+	"github.com/aesoper101/x/stringutil"
 	"go/build"
 	"os"
 	"os/exec"
@@ -8,8 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/aesoper101/x/filex"
-	"github.com/aesoper101/x/str"
+	"github.com/aesoper101/x/fileutil"
 )
 
 var defaultGoProxy = "https://goproxy.cn,direct"
@@ -18,20 +18,20 @@ var defaultGoProxy = "https://goproxy.cn,direct"
 func GoBin() string {
 	bin := os.Getenv("GOBIN")
 	if bin != "" {
-		if filex.IsExists(bin) {
+		if fileutil.IsExists(bin) {
 			return bin
 		}
 	}
 
 	gopath := GoPath()
 	bin = filepath.Join(gopath, "bin")
-	if filex.IsExists(bin) {
+	if fileutil.IsExists(bin) {
 		return bin
 	}
 
 	goroot := GoRoot()
 	bin = filepath.Join(goroot, "bin")
-	if filex.IsExists(bin) {
+	if fileutil.IsExists(bin) {
 		return bin
 	}
 
@@ -48,7 +48,7 @@ func GoProxy() string {
 		return proxy
 	}
 
-	if output, _ := exec.Command("go", "env", "GOPROXY").Output(); str.IsNotEmpty(string(output)) {
+	if output, _ := exec.Command("go", "env", "GOPROXY").Output(); stringutil.IsNotEmpty(string(output)) {
 		return string(output)
 	}
 
@@ -58,11 +58,11 @@ func GoProxy() string {
 // IsGO111ModuleOn returns true if go111module is set to on.
 func IsGO111ModuleOn() bool {
 	v := os.Getenv("GO111MODULE")
-	if str.IsNotEmpty(v) {
+	if stringutil.IsNotEmpty(v) {
 		return strings.ToLower(v) == "on"
 	}
 
-	if output, _ := exec.Command("go", "env", "GO111MODULE").Output(); str.IsNotEmpty(string(output)) {
+	if output, _ := exec.Command("go", "env", "GO111MODULE").Output(); stringutil.IsNotEmpty(string(output)) {
 		return strings.ToLower(string(output)) == "on"
 	}
 
@@ -72,11 +72,11 @@ func IsGO111ModuleOn() bool {
 // GoPath returns the GOPATH.
 func GoPath() string {
 	path := os.Getenv("GOPATH")
-	if str.IsNotEmpty(path) {
+	if stringutil.IsNotEmpty(path) {
 		return splitGoPath(path)[0]
 	}
 
-	if output, _ := exec.Command("go", "env", "GOPATH").Output(); str.IsNotEmpty(string(output)) {
+	if output, _ := exec.Command("go", "env", "GOPATH").Output(); stringutil.IsNotEmpty(string(output)) {
 		return string(output)
 	}
 
@@ -86,11 +86,11 @@ func GoPath() string {
 // GoRoot returns the GOROOT.
 func GoRoot() string {
 	path := os.Getenv("GOROOT")
-	if str.IsNotEmpty(path) {
+	if stringutil.IsNotEmpty(path) {
 		return path
 	}
 
-	if output, _ := exec.Command("go", "env", "GOROOT").Output(); str.IsNotEmpty(string(output)) {
+	if output, _ := exec.Command("go", "env", "GOROOT").Output(); stringutil.IsNotEmpty(string(output)) {
 		return string(output)
 	}
 
@@ -99,7 +99,7 @@ func GoRoot() string {
 
 // GoVersion returns the go version.
 func GoVersion() string {
-	if output, _ := exec.Command("go", "env", "GOVERSION").Output(); str.IsNotEmpty(string(output)) {
+	if output, _ := exec.Command("go", "env", "GOVERSION").Output(); stringutil.IsNotEmpty(string(output)) {
 		return strings.ReplaceAll(strings.Replace(string(output), "\n", "", -1), "go", "")
 	}
 
@@ -110,7 +110,7 @@ func GoVersion() string {
 func GoModCache() string {
 	cacheOut, _ := exec.Command("go", "env", "GOMODCACHE").Output()
 	cachePath := strings.Trim(string(cacheOut), "\n")
-	if str.IsEmpty(cachePath) {
+	if stringutil.IsEmpty(cachePath) {
 		return filepath.Join(GoPath(), "pkg", "mod")
 	}
 	return cachePath
