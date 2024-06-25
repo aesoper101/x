@@ -2,87 +2,50 @@ package transportx
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"time"
 )
 
-type Option func(*App)
+type RunOption func(*runner)
 
-func WithServer(server ...Server) Option {
-	return func(app *App) {
+func WithServers(server ...Server) RunOption {
+	return func(app *runner) {
 		app.servers = append(app.servers, server...)
 	}
 }
 
-func WithContext(ctx context.Context) Option {
-	return func(app *App) {
-		app.ctx = ctx
-	}
-}
-
-func WithLogger(logger *slog.Logger) Option {
-	return func(app *App) {
-		app.logger = logger
-	}
-}
-
-func WithName(name string) Option {
-	return func(app *App) {
-		app.name = name
-	}
-}
-
-func WithVersion(version string) Option {
-	return func(app *App) {
-		app.version = version
-	}
-}
-
-func WithID(id string) Option {
-	return func(app *App) {
-		app.id = id
-	}
-}
-
-func WithMetadata(metadata map[string]string) Option {
-	return func(app *App) {
-		app.metadata = metadata
-	}
-}
-
-func WithSignal(signal ...os.Signal) Option {
-	return func(app *App) {
+func WithSignal(signal ...os.Signal) RunOption {
+	return func(app *runner) {
 		app.sigs = append(app.sigs, signal...)
 	}
 }
 
-func WithStopTimeout(stopTimeout time.Duration) Option {
-	return func(app *App) {
+func WithStopTimeout(stopTimeout time.Duration) RunOption {
+	return func(app *runner) {
 		app.stopTimeout = stopTimeout
 	}
 }
 
-func BeforeStart(fn ...func(ctx context.Context) error) Option {
-	return func(app *App) {
+func BeforeStart(fn ...func(ctx context.Context) error) RunOption {
+	return func(app *runner) {
 		app.beforeStart = append(app.beforeStart, fn...)
 	}
 }
 
-func AfterStart(fn ...func(ctx context.Context) error) Option {
-	return func(app *App) {
+func AfterStart(fn ...func(ctx context.Context) error) RunOption {
+	return func(app *runner) {
 		app.afterStart = append(app.afterStart, fn...)
 	}
 }
 
-func BeforeStop(fn ...func(ctx context.Context) error) Option {
-	return func(app *App) {
+func BeforeStop(fn ...func(ctx context.Context) error) RunOption {
+	return func(app *runner) {
 		app.beforeStop = append(app.beforeStop, fn...)
 	}
 }
 
-func AfterStop(fn ...func(ctx context.Context) error) Option {
-	return func(app *App) {
+func AfterStop(fn ...func(ctx context.Context) error) RunOption {
+	return func(app *runner) {
 		app.afterStop = append(app.afterStop, fn...)
 	}
 }

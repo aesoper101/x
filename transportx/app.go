@@ -25,16 +25,38 @@ type AppInfo interface {
 	Metadata() map[string]string
 }
 
-type App struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	logger *slog.Logger
-
-	// app info
+type appInfo struct {
 	id       string
 	name     string
 	version  string
 	metadata map[string]string
+}
+
+func NewAppInfo(id, name, version string, metadata map[string]string) AppInfo {
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+	return &appInfo{id, name, version, metadata}
+}
+
+// ID returns app instance id.
+func (app *appInfo) ID() string { return app.id }
+
+// Name returns service name.
+func (app *appInfo) Name() string { return app.name }
+
+// Version returns app version.
+func (app *appInfo) Version() string { return app.version }
+
+// Metadata returns service metadata.
+func (app *appInfo) Metadata() map[string]string { return app.metadata }
+
+type runner struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	logger *slog.Logger
+
+	appInfo AppInfo
 
 	sigs        []os.Signal
 	stopTimeout time.Duration
@@ -49,10 +71,12 @@ type App struct {
 	hasStopped bool
 }
 
-func New(opts ...Option) *App {
-	app := &App{
+func newRunner(ctx context.Context, appInfo AppInfo, logger *slog.Logger, opts ...RunOption) *runner {
+	app := &runner{
 		ctx:    context.Background(),
-		logger: slog.Default(),
+		logger: logger,
+
+		appInfo: appInfo,
 
 		sigs:        []os.Signal{syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT},
 		stopTimeout: time.Second * 10,
@@ -68,20 +92,8 @@ func New(opts ...Option) *App {
 	return app
 }
 
-// ID returns app instance id.
-func (app *App) ID() string { return app.id }
-
-// Name returns service name.
-func (app *App) Name() string { return app.name }
-
-// Version returns app version.
-func (app *App) Version() string { return app.version }
-
-// Metadata returns service metadata.
-func (app *App) Metadata() map[string]string { return app.metadata }
-
-func (app *App) Run() error {
-	sctx := NewContext(app.ctx, app)
+func (app *runner) Run() error {
+	sctx := NewContext(app.ctx, app.appInfo)
 	eg, ctx := errgroup.WithContext(sctx)
 	wg := sync.WaitGroup{}
 
@@ -96,14 +108,14 @@ func (app *App) Run() error {
 		srv := srv
 		eg.Go(func() error {
 			<-ctx.Done()
-			stopCtx, cancel := context.WithTimeout(NewContext(app.ctx, app), app.stopTimeout)
+			stopCtx, cancel := context.WithTimeout(NewContext(app.ctx, app.appInfo), app.stopTimeout)
 			defer cancel()
 			return srv.Stop(stopCtx)
 		})
 		wg.Add(1)
 		eg.Go(func() error {
 			wg.Done()
-			return srv.Start(NewContext(app.ctx, app))
+			return srv.Start(NewContext(app.ctx, app.appInfo))
 		})
 	}
 	wg.Wait()
@@ -140,13 +152,13 @@ func (app *App) Run() error {
 	return nil
 }
 
-func (app *App) Stop() error {
+func (app *runner) Stop() error {
 	if app.hasStopped {
-		app.logger.Warn("app: app already stopped", "id", app.id)
+		app.logger.Warn("app: app already stopped", "id", app.appInfo.ID())
 		return nil
 	}
 
-	sctx := NewContext(app.ctx, app)
+	sctx := NewContext(app.ctx, app.appInfo)
 	for _, fn := range app.beforeStop {
 		if err := fn(sctx); err != nil {
 			app.logger.Error("app: before stop error", "err", err)
@@ -160,4 +172,9 @@ func (app *App) Stop() error {
 	}
 
 	return nil
+}
+
+func Run(ctx context.Context, appInfo AppInfo, logger *slog.Logger, options ...RunOption) error {
+	r := newRunner(ctx, appInfo, logger, options...)
+	return r.Run()
 }
