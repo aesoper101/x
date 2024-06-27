@@ -10,7 +10,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/bufbuild/buf/private/pkg/slicesext"
+	"github.com/aesoper101/x/slicesext"
 	"github.com/stretchr/testify/assert"
 )
 

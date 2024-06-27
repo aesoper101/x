@@ -5,13 +5,12 @@ package normalpath
 
 import (
 	"fmt"
+	"github.com/aesoper101/x/slicesext"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
-
-	"github.com/bufbuild/buf/private/pkg/slicesext"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNormalizeAndValidate(t *testing.T) {
