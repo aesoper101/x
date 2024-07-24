@@ -85,16 +85,20 @@ func (t *TestConfig2) open() {
 }
 
 func TestNew(t *testing.T) {
-	provider, err := New(context.Background(), WithBaseValues(map[string]interface{}{
-		//"provider": map[string]interface{}{
-		//	"name": "test1",
-		//	"config": map[string]interface{}{
-		//		"name": "test1",
-		//	},
-		//},
-		"provider.name":        "test2",
-		"provider.config.name": "test1",
-	}))
+	provider, err := New(
+		context.Background(), WithBaseValues(
+			map[string]interface{}{
+				//"provider": map[string]interface{}{
+				//	"name": "test1",
+				//	"config": map[string]interface{}{
+				//		"name": "test1",
+				//	},
+				//},
+				"provider.name":        "test2",
+				"provider.config.name": "test1",
+			},
+		),
+	)
 	if err != nil {
 		t.Error(err)
 		return
@@ -131,5 +135,5 @@ server:
 
 	require.Equal(t, "test1", p.String("provider.name"))
 	require.Equal(t, "test1", p.String("server.name"))
-	require.Equal(t, "on", p.String("provider.env"))
+	require.Equal(t, "auto", p.String("provider.env"))
 }
