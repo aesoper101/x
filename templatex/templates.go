@@ -64,6 +64,84 @@ type Options struct {
 
 type Option func(*Options)
 
+func WithPackageName(name string) Option {
+	return func(o *Options) {
+		o.PackageName = name
+	}
+}
+
+func WithPackageDoc(doc string) Option {
+	return func(o *Options) {
+		o.PackageDoc = doc
+	}
+}
+
+func WithFileNotice(notice string) Option {
+	return func(o *Options) {
+		o.FileNotice = notice
+	}
+}
+
+func WithData(data interface{}) Option {
+	return func(o *Options) {
+		o.Data = data
+	}
+}
+
+func WithFuncs(funcs template.FuncMap) Option {
+	return func(o *Options) {
+		o.Funcs = funcs
+	}
+}
+
+func WithPackages(pkgs *code.Packages) Option {
+	return func(o *Options) {
+		o.Packages = pkgs
+	}
+}
+
+func WithTemplate(template string) Option {
+	return func(o *Options) {
+		o.Template = template
+	}
+}
+
+func WithTemplateFS(fs fs.FS) Option {
+	return func(o *Options) {
+		o.TemplateFS = fs
+	}
+}
+
+func WithTemplatePatterns(patterns []string) Option {
+	return func(o *Options) {
+		o.TemplatePatterns = patterns
+	}
+}
+
+func WithFilename(filename string) Option {
+	return func(o *Options) {
+		o.Filename = filename
+	}
+}
+
+func WithRegionTags() Option {
+	return func(o *Options) {
+		o.RegionTags = true
+	}
+}
+
+func WithGeneratedHeader(generatedHeader bool) Option {
+	return func(o *Options) {
+		o.GeneratedHeader = generatedHeader
+	}
+}
+
+func WithAuthor(author string) Option {
+	return func(o *Options) {
+		o.Author = author
+	}
+}
+
 var (
 	modelNamesMu sync.Mutex
 	modelNames   = make(map[string]string, 0)
