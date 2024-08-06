@@ -58,6 +58,8 @@ type Options struct {
 
 	// Packages cache, you can find me on config.Config
 	Packages *code.Packages
+
+	TemplatePatterns []string
 }
 
 type Option func(*Options)
@@ -72,7 +74,30 @@ var (
 // abstraction of the text/template package that makes it easier to write gqlgen
 // plugins. If Options.Template is empty, the Render function will look for `.gotpl`
 // files inside the directory where you wrote the plugin.
-func Render(cfg Options) error {
+func Render(opts ...Option) error {
+	cfg := Options{
+		TemplatePatterns: []string{"*.gotpl"},
+		Packages:         code.NewPackages(),
+		GeneratedHeader:  true,
+		Author:           "aesoper",
+	}
+
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	if cfg.Filename == "" {
+		return fmt.Errorf("filename is required")
+	}
+
+	if cfg.PackageName == "" {
+		pkgName := code.NameForDir(filepath.Dir(cfg.Filename))
+		if pkgName == "" {
+			return fmt.Errorf("package name is required")
+		}
+		cfg.PackageName = pkgName
+	}
+
 	if CurrentImports != nil {
 		panic(fmt.Errorf("recursive or concurrent call to RenderToFile detected"))
 	}
@@ -90,15 +115,15 @@ func Render(cfg Options) error {
 	}
 
 	roots := make([]string, 0, len(t.Templates()))
-	for _, template := range t.Templates() {
+	for _, tpl := range t.Templates() {
 		// templates that end with _.gotpl are special files we don't want to include
-		if strings.HasSuffix(template.Name(), "_.gotpl") ||
+		if strings.HasSuffix(tpl.Name(), "_.gotpl") ||
 			// filter out templates added with {{ template xxx }} syntax inside the template file
-			!strings.HasSuffix(template.Name(), ".gotpl") {
+			!strings.HasSuffix(tpl.Name(), ".gotpl") {
 			continue
 		}
 
-		roots = append(roots, template.Name())
+		roots = append(roots, tpl.Name())
 	}
 
 	// then execute all the important looking ones in order, adding them to the same file
@@ -182,7 +207,7 @@ func parseTemplates(cfg Options, t *template.Template) (*template.Template, erro
 		fileSystem = os.DirFS(rootDir)
 	}
 
-	t, err := t.ParseFS(fileSystem, "*.gotpl")
+	t, err := t.ParseFS(fileSystem, cfg.TemplatePatterns...)
 	if err != nil {
 		return nil, fmt.Errorf("locating templates: %w", err)
 	}
@@ -680,7 +705,7 @@ func write(filename string, b []byte, packages *code.Packages) error {
 
 	formatted, err := imports.Prune(filename, b, packages)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gofmt failed on %s: %s\n", filepath.Base(filename), err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "gofmt failed on %s: %s\n", filepath.Base(filename), err.Error())
 		formatted = b
 	}
 
