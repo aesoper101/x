@@ -56,6 +56,9 @@ type Options struct {
 	Data  interface{}
 	Funcs template.FuncMap
 
+	// TemplateSelector is a function that determines whether or not to render the template.
+	TemplateSelector func(string) bool
+
 	// Packages cache, you can find me on config.Config
 	Packages *code.Packages
 
@@ -142,6 +145,12 @@ func WithAuthor(author string) Option {
 	}
 }
 
+func WithTemplateSelector(selector func(string) bool) Option {
+	return func(o *Options) {
+		o.TemplateSelector = selector
+	}
+}
+
 var (
 	modelNamesMu sync.Mutex
 	modelNames   = make(map[string]string, 0)
@@ -158,6 +167,9 @@ func Render(opts ...Option) error {
 		Packages:         code.NewPackages(),
 		GeneratedHeader:  true,
 		Author:           "aesoper",
+		TemplateSelector: func(s string) bool {
+			return true
+		},
 	}
 
 	for _, opt := range opts {
@@ -222,6 +234,9 @@ func Render(opts ...Option) error {
 	for _, root := range roots {
 		if cfg.RegionTags {
 			buf.WriteString("\n// region    " + center(70, "*", " "+root+" ") + "\n")
+		}
+		if !cfg.TemplateSelector(root) {
+			continue
 		}
 		err := t.Lookup(root).Execute(&buf, cfg.Data)
 		if err != nil {
