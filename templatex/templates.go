@@ -63,6 +63,8 @@ type Options struct {
 	Packages *code.Packages
 
 	TemplatePatterns []string
+
+	DefaultImports []Import
 }
 
 type Option func(*Options)
@@ -151,6 +153,22 @@ func WithTemplateSelector(selector func(string) bool) Option {
 	}
 }
 
+func WithDefaultImports(path string, aliases ...string) Option {
+	return func(o *Options) {
+		alias := ""
+		if len(aliases) > 0 {
+			alias = aliases[0]
+		}
+
+		o.DefaultImports = append(
+			o.DefaultImports, Import{
+				Path:  path,
+				Alias: alias,
+			},
+		)
+	}
+}
+
 var (
 	modelNamesMu sync.Mutex
 	modelNames   = make(map[string]string, 0)
@@ -191,7 +209,18 @@ func Render(opts ...Option) error {
 	if CurrentImports != nil {
 		panic(fmt.Errorf("recursive or concurrent call to RenderToFile detected"))
 	}
+
 	CurrentImports = &Imports{packages: cfg.Packages, destDir: filepath.Dir(cfg.Filename)}
+
+	for _, imp := range cfg.DefaultImports {
+		var aliases []string
+		if imp.Alias != "" {
+			aliases = []string{imp.Alias}
+		}
+		if _, err := CurrentImports.Reserve(imp.Path, aliases...); err != nil {
+			return fmt.Errorf("default import %s: %w", imp, err)
+		}
+	}
 
 	funcs := Funcs()
 	for n, f := range cfg.Funcs {
