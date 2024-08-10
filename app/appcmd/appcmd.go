@@ -24,8 +24,20 @@ type Command struct {
 	// The Short field will be prepended to the Long field with two newlines.
 	// Must be unset if short is unset.
 	Long string
+
+	// Example is examples of how to use the command.
+	Example string
+
 	// Args are the expected arguments.
 	Args PositionalArgs
+
+	// ValidArgs is list of all valid non-flag arguments that are accepted in shell completions
+	ValidArgs []string
+	// ValidArgsFunction is an optional function that provides valid non-flag arguments for shell completion.
+	// It is a dynamic version of using ValidArgs.
+	// Only one of ValidArgs and ValidArgsFunction can be used for a command.
+	ValidArgsFunction func(args []string, toComplete string) ([]string, ShellCompDirective)
+
 	// Deprecated says to print this deprecation string.
 	Deprecated string
 	// Hidden says to hide this command.
@@ -230,11 +242,13 @@ func commandToCobra(
 		Hidden:     command.Hidden,
 		Short:      strings.TrimSpace(command.Short),
 	}
-	cobraCommand.SetHelpTemplate(`{{.Short}}
+	cobraCommand.SetHelpTemplate(
+		`{{.Short}}
 
 {{with .Long}}{{. | trimTrailingWhitespaces}}
 
-{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`)
+{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`,
+	)
 	cobraCommand.SetHelpFunc(
 		func(c *cobra.Command, _ []string) {
 			if err := tmpl(container.Stdout(), c.HelpTemplate(), c); err != nil {
@@ -244,6 +258,21 @@ func commandToCobra(
 	)
 	if command.Long != "" {
 		cobraCommand.Long = strings.TrimSpace(command.Long)
+	}
+	if command.Example != "" {
+		cobraCommand.Example = strings.TrimSpace(command.Example)
+	}
+	if command.ValidArgs != nil {
+		cobraCommand.ValidArgs = command.ValidArgs
+	}
+	if command.ValidArgsFunction != nil {
+		cobraCommand.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) (
+			[]string,
+			cobra.ShellCompDirective,
+		) {
+			argsNew, directive := command.ValidArgsFunction(args, toComplete)
+			return argsNew, directive.cobra()
+		}
 	}
 	if command.BindFlags != nil {
 		command.BindFlags(cobraCommand.Flags())
