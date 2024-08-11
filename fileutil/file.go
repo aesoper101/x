@@ -99,15 +99,17 @@ func IfIsRegular(path string, fn func() error) error {
 
 // MkdirIfNotExist creates a directory if it does not exist.
 func MkdirIfNotExist(dir string) error {
-	return IfNotExists(dir, func(dir string) error {
-		return os.MkdirAll(dir, os.ModePerm)
-	})
+	return IfNotExists(
+		dir, func(dir string) error {
+			return os.MkdirAll(dir, os.ModePerm)
+		},
+	)
 }
 
 // CreateFileFromByteFn creates a file from the functionx that returns a byte slice.
 func CreateFileFromByteFn(filename string, overwrite bool, f func() []byte) error {
 	if IsExists(filename) && !overwrite {
-		return errors.New("file already exists, and overwrite is false")
+		return nil
 	}
 
 	dir := filepath.Dir(filename)
@@ -133,9 +135,11 @@ func CreateFileFromReader(file string, overwrite bool, reader io.Reader) error {
 	if _, err := b.ReadFrom(reader); err != nil {
 		return err
 	}
-	return CreateFileFromByteFn(file, overwrite, func() []byte {
-		return b.Bytes()
-	})
+	return CreateFileFromByteFn(
+		file, overwrite, func() []byte {
+			return b.Bytes()
+		},
+	)
 }
 
 // CreateFileFromWriterFunc creates a file from the functionx that returns a writer.
@@ -144,23 +148,29 @@ func CreateFileFromWriterFunc(file string, overwrite bool, fn func(w io.Writer) 
 	if err := fn(b); err != nil {
 		return err
 	}
-	return CreateFileFromByteFn(file, overwrite, func() []byte {
-		return b.Bytes()
-	})
+	return CreateFileFromByteFn(
+		file, overwrite, func() []byte {
+			return b.Bytes()
+		},
+	)
 }
 
 // CreateFileFromString creates a file from the string.
 func CreateFileFromString(file string, overwrite bool, content string) error {
-	return CreateFileFromByteFn(file, overwrite, func() []byte {
-		return []byte(content)
-	})
+	return CreateFileFromByteFn(
+		file, overwrite, func() []byte {
+			return []byte(content)
+		},
+	)
 }
 
 // CreateFileFromBytes creates a file from the byte slice.
 func CreateFileFromBytes(file string, overwrite bool, content []byte) error {
-	return CreateFileFromByteFn(file, overwrite, func() []byte {
-		return content
-	})
+	return CreateFileFromByteFn(
+		file, overwrite, func() []byte {
+			return content
+		},
+	)
 }
 
 // DeleteFile deletes a file.
