@@ -10,6 +10,12 @@ func ToString(v interface{}) string {
 	switch v := v.(type) {
 	case string:
 		return v
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", v)
+	case float32, float64:
+		return fmt.Sprintf("%f", v)
+	case bool:
+		return fmt.Sprintf("%t", v)
 	case []byte:
 		return string(v)
 	case error:
