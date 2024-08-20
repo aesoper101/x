@@ -11,6 +11,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.2.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
+	github.com/jdx/go-netrc v1.0.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/knadh/koanf/maps v0.1.1
 	github.com/knadh/koanf/parsers/json v0.1.0
