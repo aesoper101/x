@@ -135,5 +135,5 @@ server:
 
 	require.Equal(t, "test1", p.String("provider.name"))
 	require.Equal(t, "test1", p.String("server.name"))
-	require.Equal(t, "auto", p.String("provider.env"))
+	require.Equal(t, "on", p.String("provider.env"))
 }
