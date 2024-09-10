@@ -127,6 +127,11 @@ type Builder interface {
 	SubCommandBuilder
 }
 
+// NewBuilder returns a new Builder.
+func NewBuilder(appName string, options ...BuilderOption) Builder {
+	return newBuilder(appName, options...)
+}
+
 // BuilderOption is an option for a new Builder
 type BuilderOption func(*builder)
 
@@ -160,7 +165,11 @@ func BuilderWithDefaultLogLevel(defaultLogLevel slog.Level) BuilderOption {
 
 func ReadConfig(ctx context.Context, container NameContainer, value interface{}) error {
 	configFilePath := filepath.Clean(container.ConfigDirPath())
-	provider, err := configext.New(ctx, configext.WithConfigFiles(configFilePath), configext.EnableEnvLoading(container.AppName()))
+	provider, err := configext.New(
+		ctx,
+		configext.WithConfigFiles(configFilePath),
+		configext.EnableEnvLoading(container.AppName()),
+	)
 	if err != nil {
 		return err
 	}
