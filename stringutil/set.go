@@ -22,6 +22,10 @@ func (set StringSet) IsEmpty() bool {
 	return len(set) == 0
 }
 
+func (set StringSet) Len() int {
+	return len(set)
+}
+
 func (set StringSet) Add(s string) {
 	set[s] = struct{}{}
 }

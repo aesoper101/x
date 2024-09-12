@@ -163,12 +163,12 @@ func BuilderWithDefaultLogLevel(defaultLogLevel slog.Level) BuilderOption {
 	}
 }
 
-func ReadConfig(ctx context.Context, container NameContainer, value interface{}) error {
+func ReadConfig(ctx context.Context, container NameContainer, schema []byte, value interface{}) error {
 	configFilePath := filepath.Clean(container.ConfigDirPath())
 	provider, err := configext.New(
 		ctx,
+		schema,
 		configext.WithConfigFiles(configFilePath),
-		configext.EnableEnvLoading(container.AppName()),
 	)
 	if err != nil {
 		return err

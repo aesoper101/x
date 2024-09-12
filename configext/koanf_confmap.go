@@ -3,16 +3,19 @@ package configext
 import (
 	"bytes"
 	"encoding/json"
-
+	"errors"
 	"github.com/knadh/koanf/maps"
-	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
 )
 
+// KoanfConfmap implements a raw map[string]interface{} provider.
 type KoanfConfmap struct {
 	tuples []tuple
 }
 
+// NewKoanfConfmap  returns a confmap Provider that takes a flat or nested
+// map[string]interface{}. If a delim is provided, it indicates that the
+// keys are flat and the map needs to be unflatted by delim.
 func NewKoanfConfmap(tuples []tuple) *KoanfConfmap {
 	return &KoanfConfmap{tuples: jsonify(tuples)}
 }

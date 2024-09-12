@@ -1,25 +1,22 @@
 package configext
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"github.com/aesoper101/x/fileutil"
-	"io/fs"
-	"log/slog"
-	"net/url"
-	"path/filepath"
-	"reflect"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
-
-	"github.com/go-viper/mapstructure/v2"
+	"github.com/aesoper101/x/watcherext"
 	"github.com/inhies/go-bytesize"
-	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/providers/posflag"
 	"github.com/knadh/koanf/v2"
+	"github.com/pkg/errors"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/spf13/pflag"
+	"log/slog"
+	"net/url"
+	"reflect"
+	"sync"
+	"time"
 )
 
 type tuple struct {
@@ -27,29 +24,29 @@ type tuple struct {
 	Value interface{}
 }
 
-type eventChanel chan struct{}
-
 type Provider struct {
-	l      sync.RWMutex
-	logger *slog.Logger
+	l sync.RWMutex
 	*koanf.Koanf
 	immutables, exceptImmutables []string
 
-	onChanges []func(event interface{}, err error)
+	schema                   []byte
+	flags                    *pflag.FlagSet
+	validator                *jsonschema.Schema
+	onChanges                []func(watcherext.Event, error)
+	onValidationError        func(k *koanf.Koanf, err error)
+	excludeFieldsFromTracing []string
 
 	forcedValues []tuple
 	baseValues   []tuple
 	files        []string
 
-	flags *pflag.FlagSet
+	skipValidation    bool
+	disableEnvLoading bool
 
-	enableEnvLoading bool
-	envPrefix        string
+	logger *slog.Logger
 
 	providers     []koanf.Provider
 	userProviders []koanf.Provider
-
-	decodeHookFunc mapstructure.DecodeHookFunc
 }
 
 const (
@@ -57,30 +54,40 @@ const (
 	Delimiter  = "."
 )
 
+// RegisterConfigFlag registers the "--config" flag on pflag.FlagSet.
 func RegisterConfigFlag(flags *pflag.FlagSet, fallback []string) {
 	flags.StringSliceP(FlagConfig, "c", fallback, "Config files to load, overwriting in the order specified.")
 }
 
-func New(ctx context.Context, options ...ProviderOptions) (*Provider, error) {
-	p := &Provider{
-		logger: slog.Default(),
-		decodeHookFunc: mapstructure.ComposeDecodeHookFunc(
-			mapstructure.StringToTimeDurationHookFunc(),
-			mapstructure.StringToIPHookFunc(),
-			mapstructure.StringToNetIPAddrHookFunc(),
-			mapstructure.StringToNetIPAddrPortHookFunc(),
-			mapstructure.StringToTimeHookFunc(time.RFC3339),
-			mapstructure.StringToSliceHookFunc(","),
-			StringToMailAddressHookFunc(),
-			StringToRegexpHookFunc(),
-			StringToURLHookFunc(),
-			JsonUnmarshalerHookFunc(),
-			TextUnmarshalerHookFunc(),
-		),
-		Koanf: koanf.NewWithConf(koanf.Conf{Delim: Delimiter, StrictMerge: true}),
+// New creates a new provider instance or errors.
+// Configuration values are loaded in the following order:
+//
+// 1. Defaults from the JSON Schema
+// 2. Config files (yaml, yml, toml, json)
+// 3. Command line flags
+// 4. Environment variables
+//
+// There will also be file-watchers started for all config files. To cancel the
+// watchers, cancel the context.
+func New(ctx context.Context, schema []byte, modifiers ...OptionModifier) (*Provider, error) {
+	validator, err := getSchema(ctx, schema)
+	if err != nil {
+		return nil, err
 	}
-	for _, option := range options {
-		option(p)
+
+	l := slog.Default()
+
+	p := &Provider{
+		schema:                   schema,
+		validator:                validator,
+		onValidationError:        func(k *koanf.Koanf, err error) {},
+		excludeFieldsFromTracing: []string{"dsn", "secret", "password", "key"},
+		logger:                   l,
+		Koanf:                    koanf.NewWithConf(koanf.Conf{Delim: Delimiter, StrictMerge: true}),
+	}
+
+	for _, m := range modifiers {
+		m(p)
 	}
 
 	providers, err := p.createProviders(ctx)
@@ -96,11 +103,21 @@ func New(ctx context.Context, options ...ProviderOptions) (*Provider, error) {
 	}
 
 	p.replaceKoanf(k)
-
 	return p, nil
 }
 
+func (p *Provider) SkipValidation() bool {
+	return p.skipValidation
+}
+
 func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provider, err error) {
+	defaultsProvider, err := NewKoanfSchemaDefaults(p.schema, p.validator)
+	if err != nil {
+		return nil, err
+	}
+	providers = append(providers, defaultsProvider)
+
+	// Workaround for https://github.com/knadh/koanf/pull/47
 	for _, t := range p.baseValues {
 		providers = append(providers, NewKoanfConfmap([]tuple{t}))
 	}
@@ -111,46 +128,43 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 		paths = append(paths, p...)
 	}
 
-	p.logger.DebugContext(ctx, "Adding config files.", "files", paths)
+	p.logger.Debug("Adding config file .", slog.Any("files", paths))
 
-	c := make(eventChanel)
+	c := make(watcherext.EventChannel)
 	go p.watchForFileChanges(ctx, c)
 
-	files := getFiles(paths, isConfigFile)
-	for _, path := range files {
+	for _, path := range paths {
 		fp, err := NewKoanfFile(path)
 		if err != nil {
 			return nil, err
 		}
-		err = fp.Watch(func(event interface{}, err error) {
-			if err != nil {
-				p.logger.ErrorContext(ctx, "Failed to watch file.", "file", path)
-			} else {
-				c <- struct{}{}
-			}
-		})
-		if err != nil {
+
+		if _, err := fp.WatchChannel(ctx, c); err != nil {
 			return nil, err
 		}
+
 		providers = append(providers, fp)
 	}
 
 	providers = append(providers, p.userProviders...)
 
 	if p.flags != nil {
-		pp := posflag.Provider(p.flags, Delimiter, p.Koanf)
+		pp, err := NewPFlagProvider(p.schema, p.validator, p.flags, p.Koanf)
+		if err != nil {
+			return nil, err
+		}
 		providers = append(providers, pp)
 	}
 
-	if p.enableEnvLoading {
-		envProvider := env.Provider(p.envPrefix, Delimiter, func(s string) string {
-			return strings.Replace(strings.ToLower(
-				strings.ReplaceAll(strings.TrimPrefix(s, p.envPrefix), " ", "_")), "_", ".", -1)
-		})
-
+	if !p.disableEnvLoading {
+		envProvider, err := NewKoanfEnv("", p.schema, p.validator)
+		if err != nil {
+			return nil, err
+		}
 		providers = append(providers, envProvider)
 	}
 
+	// Workaround for https://github.com/knadh/koanf/pull/47
 	for _, t := range p.forcedValues {
 		providers = append(providers, NewKoanfConfmap([]tuple{t}))
 	}
@@ -158,16 +172,51 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 	return providers, nil
 }
 
+func (p *Provider) replaceKoanf(k *koanf.Koanf) {
+	p.Koanf = k
+}
+
+func (p *Provider) validate(k *koanf.Koanf) error {
+	if p.skipValidation {
+		return nil
+	}
+
+	out, err := k.Marshal(json.Parser())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(out))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := p.validator.Validate(inst); err != nil {
+		p.onValidationError(k, err)
+		return err
+	}
+
+	return nil
+}
+
+// newKoanf creates a new koanf instance with all the updated config
+//
+// This is unfortunately required due to several limitations / bugs in koanf:
+//
+// - https://github.com/knadh/koanf/issues/77
+// - https://github.com/knadh/koanf/pull/47
 func (p *Provider) newKoanf() (_ *koanf.Koanf, err error) {
 	k := koanf.New(Delimiter)
 
 	for _, provider := range p.providers {
+		// posflag.Posflag requires access to Koanf instance so we recreate the provider here which is a workaround
+		// for posflag.Provider's API.
 		if _, ok := provider.(*posflag.Posflag); ok {
 			provider = posflag.Provider(p.flags, ".", k)
 		}
 
 		var opts []koanf.Option
-		if _, ok := provider.(*env.Env); ok {
+		if _, ok := provider.(*Env); ok {
 			opts = append(opts, koanf.WithMergeFunc(MergeAllTypes))
 		}
 
@@ -176,73 +225,44 @@ func (p *Provider) newKoanf() (_ *koanf.Koanf, err error) {
 		}
 	}
 
+	if err := p.validate(k); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
 
-func (p *Provider) replaceKoanf(k *koanf.Koanf) {
-	p.Koanf = k
-	p.replaceVars(k)
-}
-
-func (p *Provider) replaceVars(k *koanf.Koanf) {
-	keys := k.Keys()
-
-	for _, key := range keys {
-		value := k.String(key)
-		if value == "" {
-			continue
-		}
-
-		reg := regexp.MustCompile(`\${([^}]+)}`)
-		matches := reg.FindAllStringSubmatch(value, -1)
-		for _, match := range matches {
-			if len(match) != 2 {
-				continue
-			}
-			// 替换值中存在的 ${} 包裹的变量
-			valPath := strings.TrimSpace(match[1])
-
-			if k.Exists(valPath) {
-				value = strings.Replace(value, match[0], k.String(valPath), -1)
-			} else if p.enableEnvLoading {
-				envKey := strings.Replace(strings.ToLower(
-					strings.TrimPrefix(valPath, p.envPrefix)), "_", ".", -1)
-				envVal := k.String(envKey)
-				if envVal != "" {
-					value = strings.Replace(value, match[0], envVal, -1)
-				}
-			}
-		}
-
-		_ = k.Set(key, value)
-	}
-
-}
-
-func (p *Provider) watchForFileChanges(ctx context.Context, c eventChanel) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-c:
-			p.logger.DebugContext(ctx, "File changed.")
-			p.reload()
-		}
+func (p *Provider) runOnChanges(e watcherext.Event, err error) {
+	for k := range p.onChanges {
+		p.onChanges[k](e, err)
 	}
 }
 
-func (p *Provider) reload() {
+func deleteOtherKeys(k *koanf.Koanf, keys []string) {
+outer:
+	for _, key := range k.Keys() {
+		for _, ik := range keys {
+			if key == ik {
+				continue outer
+			}
+		}
+		k.Delete(key)
+	}
+}
+
+func (p *Provider) reload(e watcherext.Event) {
 	p.l.Lock()
 
 	var err error
 	defer func() {
+		// we first want to unlock and then runOnChanges, so that the callbacks can actually use the Provider
 		p.l.Unlock()
-		p.runOnChanges(nil, err)
+		p.runOnChanges(e, err)
 	}()
 
 	nk, err := p.newKoanf()
 	if err != nil {
-		return
+		return // unlocks & runs changes in defer
 	}
 
 	oldImmutables, newImmutables := p.Koanf.Copy(), nk.Copy()
@@ -263,23 +283,23 @@ func (p *Provider) reload() {
 	}
 
 	p.replaceKoanf(nk)
+
+	// unlocks & runs changes in defer
 }
 
-func (p *Provider) runOnChanges(e interface{}, err error) {
-	for k := range p.onChanges {
-		p.onChanges[k](e, err)
-	}
-}
-
-func deleteOtherKeys(k *koanf.Koanf, keys []string) {
-outer:
-	for _, key := range k.Keys() {
-		for _, ik := range keys {
-			if key == ik {
-				continue outer
+func (p *Provider) watchForFileChanges(ctx context.Context, c watcherext.EventChannel) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case e := <-c:
+			switch et := e.(type) {
+			case *watcherext.ErrorEvent:
+				p.runOnChanges(e, et)
+			default:
+				p.reload(e)
 			}
 		}
-		k.Delete(key)
 	}
 }
 
@@ -337,7 +357,7 @@ func (p *Provider) BoolF(key string, fallback bool) bool {
 	return p.Bool(key)
 }
 
-func (p *Provider) StringF(key, fallback string) string {
+func (p *Provider) StringF(key string, fallback string) string {
 	p.l.RLock()
 	defer p.l.RUnlock()
 
@@ -405,10 +425,10 @@ func (p *Provider) ByteSizeF(key string, fallback bytesize.ByteSize) bytesize.By
 		// this type usually comes from user input
 		dec, err := bytesize.Parse(v)
 		if err != nil {
-			p.logger.With(
-				slog.String("key", key),
-				slog.String("raw_value", v),
-			).Warn(fmt.Sprintf("error parsing byte size value, using fallback of %s", fallback))
+			p.logger.Warn(
+				fmt.Sprintf("error parsing byte size value, using fallback of %s", fallback), slog.Any("key", key),
+				slog.Any("raw_value", v),
+			)
 			return fallback
 		}
 		return dec
@@ -418,10 +438,15 @@ func (p *Provider) ByteSizeF(key string, fallback bytesize.ByteSize) bytesize.By
 	case bytesize.ByteSize:
 		return v
 	default:
-		p.logger.With(
-			slog.String("key", key),
-			slog.Any("raw_value", v),
-		).Warn(fmt.Sprintf("error parsing byte size value, using fallback of %s", fallback))
+		p.logger.Error(
+			fmt.Sprintf(
+				"error converting byte size value because of unknown type, using fallback of %s",
+				fallback,
+			),
+			slog.Any("key", key),
+			slog.Any("raw_type", fmt.Sprintf("%T", v)),
+			slog.Any("raw_value", fmt.Sprintf("%+v", v)),
+		)
 		return fallback
 	}
 }
@@ -436,23 +461,6 @@ func (p *Provider) GetF(key string, fallback interface{}) (val interface{}) {
 
 	return p.Get(key)
 }
-
-//func (p *Provider) CORS(prefix string, defaults cors.Options) (cors.Options, bool) {
-//	if len(prefix) > 0 {
-//		prefix = strings.TrimRight(prefix, ".") + "."
-//	}
-//
-//	return cors.Options{
-//		AllowedOrigins:     p.StringsF(prefix+"cors.allowed_origins", defaults.AllowedOrigins),
-//		AllowedMethods:     p.StringsF(prefix+"cors.allowed_methods", defaults.AllowedMethods),
-//		AllowedHeaders:     p.StringsF(prefix+"cors.allowed_headers", defaults.AllowedHeaders),
-//		ExposedHeaders:     p.StringsF(prefix+"cors.exposed_headers", defaults.ExposedHeaders),
-//		AllowCredentials:   p.BoolF(prefix+"cors.allow_credentials", defaults.AllowCredentials),
-//		OptionsPassthrough: p.BoolF(prefix+"cors.options_passthrough", defaults.OptionsPassthrough),
-//		MaxAge:             p.IntF(prefix+"cors.max_age", defaults.MaxAge),
-//		Debug:              p.BoolF(prefix+"cors.debug", defaults.Debug),
-//	}, p.Bool(prefix + "cors.enabled")
-//}
 
 func (p *Provider) RequestURIF(path string, fallback *url.URL) *url.URL {
 	p.l.RLock()
@@ -488,49 +496,4 @@ func (p *Provider) URIF(path string, fallback *url.URL) *url.URL {
 	}
 
 	return fallback
-}
-
-func (p *Provider) Unmarshal(path string, o interface{}) error {
-	return p.UnmarshalWithConf(path, o, koanf.UnmarshalConf{})
-}
-
-func (p *Provider) UnmarshalWithConf(path string, o interface{}, c koanf.UnmarshalConf) error {
-	if c.DecoderConfig == nil {
-		c.DecoderConfig = &mapstructure.DecoderConfig{
-			DecodeHook:       p.decodeHookFunc,
-			Metadata:         nil,
-			Result:           o,
-			WeaklyTypedInput: true,
-		}
-	}
-	if c.Tag == "" {
-		c.Tag = "json"
-	}
-
-	return p.Koanf.UnmarshalWithConf(path, o, c)
-}
-
-func getFiles(paths []string, filter func(path string) bool) []string {
-	var files []string
-	for _, path := range paths {
-		if fileutil.IsDir(path) {
-			_ = filepath.Walk(path, func(p string, info fs.FileInfo, err error) error {
-				if !info.IsDir() && filter(p) {
-					files = append(files, p)
-				}
-				return nil
-			})
-		} else if filter(path) {
-			files = append(files, path)
-		}
-	}
-
-	return files
-}
-
-func isConfigFile(path string) bool {
-	return strings.HasSuffix(strings.ToLower(filepath.Base(path)), ".json") ||
-		strings.HasSuffix(strings.ToLower(filepath.Base(path)), ".yaml") ||
-		strings.HasSuffix(strings.ToLower(filepath.Base(path)), ".yml") ||
-		strings.HasSuffix(strings.ToLower(filepath.Base(path)), ".toml")
 }

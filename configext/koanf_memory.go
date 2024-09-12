@@ -2,13 +2,10 @@ package configext
 
 import (
 	"context"
-
+	stdjson "encoding/json"
 	"github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/v2"
-
 	"github.com/pkg/errors"
-
-	stdjson "encoding/json"
 )
 
 // KoanfMemory implements a KoanfMemory provider.
@@ -21,14 +18,10 @@ type KoanfMemory struct {
 
 // NewKoanfMemory returns a file provider.
 func NewKoanfMemory(ctx context.Context, doc stdjson.RawMessage) *KoanfMemory {
-	return NewKoanfMemoryWithParser(ctx, doc, json.Parser())
-}
-
-func NewKoanfMemoryWithParser(ctx context.Context, doc stdjson.RawMessage, parser koanf.Parser) *KoanfMemory {
 	return &KoanfMemory{
 		ctx:    ctx,
 		doc:    doc,
-		parser: parser,
+		parser: json.Parser(),
 	}
 }
 

@@ -6,14 +6,14 @@ type contextKey int
 
 const configContextKey contextKey = iota + 1
 
-func ContextWithConfigOptions(ctx context.Context, opts ...ProviderOptions) context.Context {
+func ContextWithConfigOptions(ctx context.Context, opts ...OptionModifier) context.Context {
 	return context.WithValue(ctx, configContextKey, opts)
 }
 
-func ConfigOptionsFromContext(ctx context.Context) []ProviderOptions {
-	opts, ok := ctx.Value(configContextKey).([]ProviderOptions)
+func ConfigOptionsFromContext(ctx context.Context) []OptionModifier {
+	opts, ok := ctx.Value(configContextKey).([]OptionModifier)
 	if !ok {
-		return []ProviderOptions{}
+		return []OptionModifier{}
 	}
 	return opts
 }

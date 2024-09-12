@@ -2,9 +2,7 @@ package configext
 
 import (
 	"encoding/json"
-
 	"github.com/aesoper101/x/jsonutil"
-
 	"github.com/pkg/errors"
 	"github.com/tidwall/sjson"
 )

@@ -2,7 +2,6 @@ package configext
 
 import (
 	"fmt"
-
 	"github.com/pkg/errors"
 )
 
