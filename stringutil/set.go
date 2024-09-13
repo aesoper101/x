@@ -3,10 +3,14 @@ package stringutil
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"sort"
 )
 
 type StringSet map[string]struct{}
+
+var _ yaml.Marshaler = (*StringSet)(nil)
+var _ yaml.Unmarshaler = (*StringSet)(nil)
 
 func (set StringSet) ToSlice() []string {
 	keys := make([]string, 0, len(set))
@@ -123,6 +127,24 @@ func (set *StringSet) UnmarshalJSON(data []byte) error {
 	}
 
 	return err
+}
+
+func (set StringSet) MarshalYAML() (interface{}, error) {
+	return set.ToSlice(), nil
+}
+
+func (set StringSet) UnmarshalYAML(value *yaml.Node) error {
+	var ss []string
+	err := value.Decode(&ss)
+	if err != nil {
+		return err
+	}
+
+	for _, s := range ss {
+		set.Add(s)
+	}
+
+	return nil
 }
 
 func (set StringSet) String() string {
