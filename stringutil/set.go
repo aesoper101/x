@@ -130,19 +130,34 @@ func (set *StringSet) UnmarshalJSON(data []byte) error {
 }
 
 func (set StringSet) MarshalYAML() (interface{}, error) {
-	return set, nil
+	var node yaml.Node
+	if err := node.Encode(set.ToSlice()); err != nil {
+		return nil, err
+	}
+	return node, nil
 }
 
-func (set StringSet) UnmarshalYAML(value *yaml.Node) error {
+func (set *StringSet) UnmarshalYAML(value *yaml.Node) error {
+	newSet := NewStringSet()
+
 	var ss []string
-	err := value.Decode(&ss)
-	if err != nil {
-		return err
+	var err error
+	if err = value.Decode(&ss); err == nil {
+		for _, s := range ss {
+			newSet.Add(s)
+		}
+	} else {
+		var s string
+		if err = value.Decode(&s); err == nil {
+			newSet.Add(s)
+		}
 	}
 
-	for _, s := range ss {
-		set.Add(s)
+	if err != nil {
+		return fmt.Errorf("stringutil.StringSet.UnmarshalYAML errored with %w", err)
 	}
+
+	*set = newSet
 
 	return nil
 }
@@ -153,6 +168,12 @@ func (set StringSet) String() string {
 
 func (set StringSet) Clone() StringSet {
 	return NewStringSet(set.ToSlice()...)
+}
+
+func (set StringSet) Clear() {
+	for k := range set {
+		delete(set, k)
+	}
 }
 
 func NewStringSet(sl ...string) StringSet {
