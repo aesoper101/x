@@ -130,7 +130,7 @@ func (set *StringSet) UnmarshalJSON(data []byte) error {
 }
 
 func (set StringSet) MarshalYAML() (interface{}, error) {
-	return set.ToSlice(), nil
+	return set, nil
 }
 
 func (set StringSet) UnmarshalYAML(value *yaml.Node) error {
