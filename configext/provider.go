@@ -131,6 +131,8 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 	p.logger.Debug("Adding config file .", slog.Any("files", paths))
 
 	c := make(watcherext.EventChannel)
+	defer close(c)
+
 	go p.watchForFileChanges(ctx, c)
 
 	for _, path := range paths {
@@ -292,13 +294,11 @@ func (p *Provider) watchForFileChanges(ctx context.Context, c watcherext.EventCh
 		select {
 		case <-ctx.Done():
 			return
-		case e := <-c:
-			switch et := e.(type) {
-			case *watcherext.ErrorEvent:
-				p.runOnChanges(e, et)
-			default:
-				p.reload(e)
+		case e, ok := <-c:
+			if !ok {
+				return
 			}
+			p.reload(e)
 		}
 	}
 }

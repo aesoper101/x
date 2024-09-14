@@ -18,9 +18,12 @@ func WithCancel(ctx context.Context) (context.Context, context.CancelFunc) {
 	signalC, closer := NewSignalChannel()
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
-		<-signalC
-		closer()
-		cancel()
+		select {
+		case <-signalC:
+			cancel()
+		case <-ctx.Done():
+			closer()
+		}
 	}()
 	return ctx, cancel
 }

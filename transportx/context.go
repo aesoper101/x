@@ -9,7 +9,7 @@ type appKey struct{}
 
 // NewContext returns a new Context that carries value.
 func NewContext(ctx context.Context, s AppInfo) context.Context {
-	return contextext.NewContext(ctx, appKey{}, s)
+	return contextext.NewContext[appKey, AppInfo](ctx, appKey{}, s)
 }
 
 // FromContext returns the Transport value stored in ctx, if any.

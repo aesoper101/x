@@ -1,16 +1,18 @@
 package transportx
 
+//go:generate mockgen -package=transportx -destination=mock_server_test.go . Server
+
 import (
 	"context"
 	"errors"
-	"log/slog"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
-	"time"
-
+	"github.com/aesoper101/x/interrupt"
+	"github.com/aesoper101/x/uuidutil"
 	"golang.org/x/sync/errgroup"
+	"log/slog"
+	"net/url"
+	"os"
+	"sync"
+	"time"
 )
 
 type Server interface {
@@ -32,13 +34,6 @@ type appInfo struct {
 	metadata map[string]string
 }
 
-func NewAppInfo(id, name, version string, metadata map[string]string) AppInfo {
-	if metadata == nil {
-		metadata = make(map[string]string)
-	}
-	return &appInfo{id, name, version, metadata}
-}
-
 // ID returns app instance id.
 func (app *appInfo) ID() string { return app.id }
 
@@ -58,6 +53,12 @@ type runner struct {
 
 	appInfo AppInfo
 
+	id        string
+	name      string
+	version   string
+	metadata  map[string]string
+	endpoints []*url.URL
+
 	sigs        []os.Signal
 	stopTimeout time.Duration
 
@@ -71,110 +72,112 @@ type runner struct {
 	hasStopped bool
 }
 
-func newRunner(ctx context.Context, appInfo AppInfo, logger *slog.Logger, opts ...RunOption) *runner {
+func newRunner(opts ...RunOption) *runner {
 	app := &runner{
 		ctx:    context.Background(),
-		logger: logger,
+		logger: slog.Default(),
 
-		appInfo: appInfo,
-
-		sigs:        []os.Signal{syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT},
 		stopTimeout: time.Second * 10,
 	}
+
+	if id, err := uuidutil.New(); err == nil {
+		app.id = id.String()
+	}
+
 	for _, opt := range opts {
 		opt(app)
 	}
 
-	ctx, cancel := context.WithCancel(app.ctx)
-	app.ctx = ctx
-	app.cancel = cancel
+	app.appInfo = &appInfo{
+		id:       app.id,
+		name:     app.name,
+		version:  app.version,
+		metadata: app.metadata,
+	}
+
+	ctx, cancel := interrupt.WithCancel(app.ctx)
+	app.ctx, app.cancel = ctx, cancel
 
 	return app
 }
 
-func (app *runner) Run() error {
+func (app *runner) Run() (err error) {
 	sctx := NewContext(app.ctx, app.appInfo)
 	eg, ctx := errgroup.WithContext(sctx)
 	wg := sync.WaitGroup{}
 
 	for _, fn := range app.beforeStart {
-		if err := fn(sctx); err != nil {
-			app.logger.Error("app: before start error", "err", err)
+		if err = fn(sctx); err != nil {
 			return err
 		}
 	}
-
 	for _, srv := range app.servers {
 		srv := srv
-		eg.Go(func() error {
-			<-ctx.Done()
-			stopCtx, cancel := context.WithTimeout(NewContext(app.ctx, app.appInfo), app.stopTimeout)
-			defer cancel()
-			return srv.Stop(stopCtx)
-		})
+		eg.Go(
+			func() error {
+				<-ctx.Done() // wait for stop signal
+				stopCtx, cancel := context.WithTimeout(NewContext(app.ctx, app.appInfo), app.stopTimeout)
+				defer cancel()
+				return srv.Stop(stopCtx)
+			},
+		)
 		wg.Add(1)
-		eg.Go(func() error {
-			wg.Done()
-			return srv.Start(NewContext(app.ctx, app.appInfo))
-		})
+		eg.Go(
+			func() error {
+				wg.Done() // here is to ensure server start has begun running before register, so defer is not needed
+				startCtx := NewContext(app.ctx, app.appInfo)
+				return srv.Start(startCtx)
+			},
+		)
 	}
 	wg.Wait()
 
 	for _, fn := range app.afterStart {
-		if err := fn(sctx); err != nil {
-			app.logger.Error("app: after start error", "err", err)
+		if err = fn(sctx); err != nil {
 			return err
 		}
 	}
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, app.sigs...)
-	eg.Go(func() error {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-c:
-			return app.Stop()
-		}
-	})
-	if err := eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		app.logger.Error("app: run error", "err", err)
+	eg.Go(
+		func() error {
+			select {
+			case <-app.ctx.Done():
+				return app.Stop()
+			}
+		},
+	)
+	if err = eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
-
+	err = nil
 	for _, fn := range app.afterStop {
-		if err := fn(sctx); err != nil {
-			app.logger.Error("app: after stop error", "err", err)
-			return err
-		}
+		err = fn(sctx)
 	}
-
-	return nil
+	return err
 }
 
-func (app *runner) Stop() error {
+func (app *runner) Stop() (err error) {
 	if app.hasStopped {
-		app.logger.Warn("app: app already stopped", "id", app.appInfo.ID())
+		app.logger.Warn("runner has stopped")
 		return nil
 	}
 
 	sctx := NewContext(app.ctx, app.appInfo)
 	for _, fn := range app.beforeStop {
-		if err := fn(sctx); err != nil {
-			app.logger.Error("app: before stop error", "err", err)
-			return err
-		}
+		err = fn(sctx)
 	}
 
-	app.hasStopped = true
 	if app.cancel != nil {
 		app.cancel()
 	}
 
-	return nil
+	app.logger.Info("runner stopped")
+
+	app.hasStopped = true
+	return err
 }
 
-func Run(ctx context.Context, appInfo AppInfo, logger *slog.Logger, options ...RunOption) error {
-	r := newRunner(ctx, appInfo, logger, options...)
-	return r.Run()
+func Run(opts ...RunOption) error {
+	app := newRunner(opts...)
+	return app.Run()
 }
