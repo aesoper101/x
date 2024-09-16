@@ -30,6 +30,10 @@ type Printer interface {
 	// Returns error if there was an error during printing.
 	Bytes() ([]byte, error)
 
+	// Reset resets the printer.
+	// Useful for reusing the printer.
+	Reset()
+
 	isPrinter()
 }
 
@@ -116,6 +120,12 @@ func (p *printer) pString(s string) {
 		_, _ = p.buffer.WriteString(s)
 	}
 	_, _ = p.buffer.WriteRune('\n')
+}
+
+func (p *printer) Reset() {
+	p.buffer = bytes.NewBuffer(nil)
+	p.curIndentCount = 0
+	p.err = nil
 }
 
 func (*printer) isPrinter() {}

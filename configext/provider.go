@@ -70,25 +70,24 @@ func RegisterConfigFlag(flags *pflag.FlagSet, fallback []string) {
 // There will also be file-watchers started for all config files. To cancel the
 // watchers, cancel the context.
 func New(ctx context.Context, schema []byte, modifiers ...OptionModifier) (*Provider, error) {
-	validator, err := getSchema(ctx, schema)
-	if err != nil {
-		return nil, err
-	}
-
-	l := slog.Default()
-
 	p := &Provider{
 		schema:                   schema,
-		validator:                validator,
 		onValidationError:        func(k *koanf.Koanf, err error) {},
 		excludeFieldsFromTracing: []string{"dsn", "secret", "password", "key"},
-		logger:                   l,
+		logger:                   slog.Default(),
 		Koanf:                    koanf.NewWithConf(koanf.Conf{Delim: Delimiter, StrictMerge: true}),
 	}
 
 	for _, m := range modifiers {
 		m(p)
 	}
+
+	validator, err := getSchema(ctx, schema)
+	if err != nil {
+		return nil, err
+	}
+
+	p.validator = validator
 
 	providers, err := p.createProviders(ctx)
 	if err != nil {
@@ -128,20 +127,21 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 		paths = append(paths, p...)
 	}
 
-	p.logger.Debug("Adding config file .", slog.Any("files", paths))
+	p.logger.Debug("Adding config files.", "files", paths)
 
 	c := make(watcherext.EventChannel)
-	defer close(c)
 
 	go p.watchForFileChanges(ctx, c)
 
 	for _, path := range paths {
 		fp, err := NewKoanfFile(path)
 		if err != nil {
+			p.closeWatcher(c)
 			return nil, err
 		}
 
 		if _, err := fp.WatchChannel(ctx, c); err != nil {
+			p.closeWatcher(c)
 			return nil, err
 		}
 
@@ -153,6 +153,7 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 	if p.flags != nil {
 		pp, err := NewPFlagProvider(p.schema, p.validator, p.flags, p.Koanf)
 		if err != nil {
+			p.closeWatcher(c)
 			return nil, err
 		}
 		providers = append(providers, pp)
@@ -161,6 +162,7 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 	if !p.disableEnvLoading {
 		envProvider, err := NewKoanfEnv("", p.schema, p.validator)
 		if err != nil {
+			p.closeWatcher(c)
 			return nil, err
 		}
 		providers = append(providers, envProvider)
@@ -172,6 +174,10 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 	}
 
 	return providers, nil
+}
+
+func (p *Provider) closeWatcher(w watcherext.EventChannel) {
+	close(w)
 }
 
 func (p *Provider) replaceKoanf(k *koanf.Koanf) {
@@ -291,14 +297,23 @@ func (p *Provider) reload(e watcherext.Event) {
 
 func (p *Provider) watchForFileChanges(ctx context.Context, c watcherext.EventChannel) {
 	for {
+		if len(p.files) == 0 {
+			return
+		}
 		select {
 		case <-ctx.Done():
+			p.logger.Debug("context cancelled, stopping file watcher")
 			return
 		case e, ok := <-c:
 			if !ok {
 				return
 			}
-			p.reload(e)
+			switch et := e.(type) {
+			case *watcherext.ErrorEvent:
+				p.runOnChanges(e, et)
+			default:
+				p.reload(e)
+			}
 		}
 	}
 }
@@ -426,8 +441,9 @@ func (p *Provider) ByteSizeF(key string, fallback bytesize.ByteSize) bytesize.By
 		dec, err := bytesize.Parse(v)
 		if err != nil {
 			p.logger.Warn(
-				fmt.Sprintf("error parsing byte size value, using fallback of %s", fallback), slog.Any("key", key),
-				slog.Any("raw_value", v),
+				fmt.Sprintf("error parsing byte size value, using fallback of %s", fallback),
+				slog.Any("key", key),
+				slog.Any("raw_value", fmt.Sprintf("%+v", v)),
 			)
 			return fallback
 		}
@@ -444,8 +460,8 @@ func (p *Provider) ByteSizeF(key string, fallback bytesize.ByteSize) bytesize.By
 				fallback,
 			),
 			slog.Any("key", key),
-			slog.Any("raw_type", fmt.Sprintf("%T", v)),
 			slog.Any("raw_value", fmt.Sprintf("%+v", v)),
+			slog.Any("raw_type", fmt.Sprintf("%T", v)),
 		)
 		return fallback
 	}

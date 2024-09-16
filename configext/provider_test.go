@@ -2,16 +2,20 @@ package configext
 
 import (
 	"context"
-	"github.com/inhies/go-bytesize"
-	"github.com/knadh/koanf/parsers/json"
-	"github.com/spf13/pflag"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/url"
 	"os"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/inhies/go-bytesize"
+
+	"github.com/knadh/koanf/parsers/json"
+
+	"github.com/spf13/pflag"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newProvider(t testing.TB) *Provider {
@@ -39,19 +43,10 @@ func newProvider(t testing.TB) *Provider {
 		ctx,
 		[]byte(`{"type": "object", "properties": {"foo-bar-baz": {"type": "string"}, "b": {"type": "string"}}}`),
 		WithFlags(f),
-		WithContext(ctx),
+		//WithContext(ctx),
 	)
 	require.NoError(t, err)
 	return p
-}
-
-// parseOrPanic parses a url or panics.
-func parseOrPanic(in string) *url.URL {
-	out, err := url.Parse(in)
-	if err != nil {
-		panic(err.Error())
-	}
-	return out
 }
 
 func TestProviderMethods(t *testing.T) {
@@ -259,7 +254,7 @@ func TestAdvancedConfigs(t *testing.T) {
 				schemaPath := path.Join("stub", tc.stub, "config.schema.json")
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
-				k, err := newKoanf(ctx, schemaPath, tc.configs, append(tc.ops, WithContext(ctx))...)
+				k, err := newKoanf(ctx, schemaPath, tc.configs, append(tc.ops)...)
 				if !tc.isValid {
 					require.Error(t, err)
 					return
@@ -267,7 +262,6 @@ func TestAdvancedConfigs(t *testing.T) {
 				require.NoError(t, err)
 
 				out, err := k.Koanf.Marshal(json.Parser())
-
 				require.NoError(t, err)
 				assert.JSONEq(t, string(expected), string(out), "%s", out)
 
@@ -301,4 +295,13 @@ func BenchmarkDirtyPatch(b *testing.B) {
 			b.Fatalf("Unexpected error: %s", err)
 		}
 	}
+}
+
+// parseOrPanic parses a url or panics.
+func parseOrPanic(in string) *url.URL {
+	out, err := url.Parse(in)
+	if err != nil {
+		panic(err.Error())
+	}
+	return out
 }

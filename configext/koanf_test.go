@@ -3,12 +3,14 @@ package configext
 import (
 	"context"
 	"fmt"
-	"github.com/dgraph-io/ristretto"
-	"github.com/spf13/pflag"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/spf13/pflag"
+
+	"github.com/dgraph-io/ristretto"
+	"github.com/stretchr/testify/require"
 )
 
 func newKoanf(ctx context.Context, schemaPath string, configPaths []string, modifiers ...OptionModifier) (

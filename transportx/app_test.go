@@ -16,7 +16,7 @@ func TestRun(t *testing.T) {
 
 	ctx, cancel := interrupt.WithCancel(context.Background())
 	go func() {
-		timer := time.NewTimer(5 * time.Second)
+		timer := time.NewTimer(1 * time.Second)
 		select {
 		case <-timer.C:
 			fmt.Println("timeout")
@@ -53,11 +53,17 @@ func TestRun(t *testing.T) {
 	).AnyTimes()
 
 	err := Run(
-		WithContext(ctx), WithServers(mockServer, mockServer2), AfterStart(
+		WithContext(ctx),
+		WithServers(mockServer, mockServer2),
+		BeforeStart(
 			func(ctx context.Context) error {
-				fmt.Println("mock after start2")
-				info, ok := FromContext(ctx)
-				fmt.Println("--------------", info, ok)
+				fmt.Println("mock before start")
+				return nil
+			},
+		),
+		AfterStart(
+			func(ctx context.Context) error {
+				fmt.Println("mock after start")
 				return nil
 			},
 		),

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/aesoper101/x/watcherext"
 	"github.com/knadh/koanf/parsers/json"
-	"github.com/knadh/koanf/parsers/toml"
+	"github.com/knadh/koanf/parsers/toml/v2"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/v2"
 	"github.com/pkg/errors"

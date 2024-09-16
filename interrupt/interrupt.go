@@ -19,10 +19,11 @@ func WithCancel(ctx context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		select {
-		case <-signalC:
-			cancel()
 		case <-ctx.Done():
 			closer()
+			return
+		case <-signalC:
+			cancel()
 		}
 	}()
 	return ctx, cancel

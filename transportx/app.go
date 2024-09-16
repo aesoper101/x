@@ -10,7 +10,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"net/url"
-	"os"
 	"sync"
 	"time"
 )
@@ -59,7 +58,6 @@ type runner struct {
 	metadata  map[string]string
 	endpoints []*url.URL
 
-	sigs        []os.Signal
 	stopTimeout time.Duration
 
 	beforeStart []func(context.Context) error
@@ -111,6 +109,7 @@ func (app *runner) Run() (err error) {
 			return err
 		}
 	}
+
 	for _, srv := range app.servers {
 		srv := srv
 		eg.Go(

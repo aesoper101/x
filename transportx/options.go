@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/url"
-	"os"
 	"time"
 )
 
@@ -13,12 +12,6 @@ type RunOption func(*runner)
 func WithServers(server ...Server) RunOption {
 	return func(app *runner) {
 		app.servers = append(app.servers, server...)
-	}
-}
-
-func WithSignal(signal ...os.Signal) RunOption {
-	return func(app *runner) {
-		app.sigs = append(app.sigs, signal...)
 	}
 }
 

@@ -1,7 +1,6 @@
 package configext
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/aesoper101/x/watcherext"
@@ -15,13 +14,11 @@ type (
 	OptionModifier func(p *Provider)
 )
 
-func WithContext(ctx context.Context) OptionModifier {
-	return func(p *Provider) {
-		for _, o := range ConfigOptionsFromContext(ctx) {
-			o(p)
-		}
-	}
-}
+//func WithContext(ctx context.Context) OptionModifier {
+//	return func(p *Provider) {
+//		p.ctx = ctx
+//	}
+//}
 
 func WithConfigFiles(files ...string) OptionModifier {
 	return func(p *Provider) {

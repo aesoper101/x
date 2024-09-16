@@ -21,7 +21,8 @@ func WatchFile(ctx context.Context, file string, c EventChannel) (Watcher, error
 	}
 	resolvedFile, err := filepath.EvalSymlinks(file)
 	if err != nil {
-		if _, ok := err.(*os.PathError); !ok {
+		var pathError *os.PathError
+		if !errors.As(err, &pathError) {
 			return nil, errors.WithStack(err)
 		}
 		// The file does not exist. The watcher should still watch the directory
@@ -122,7 +123,8 @@ func streamFileEvents(
 				// when there is no error the file exists and any symlinks can be resolved
 				if err != nil {
 					// check if the watchedFile (or the file behind the symlink) was removed
-					if _, ok := err.(*os.PathError); ok {
+					var pathError *os.PathError
+					if errors.As(err, &pathError) {
 						select {
 						case c <- &RemoveEvent{eventSource}:
 						case <-ctx.Done():
