@@ -19,6 +19,11 @@ type Server interface {
 	Stop(context.Context) error
 }
 
+type Runner interface {
+	Run() error
+	Stop() error
+}
+
 type AppInfo interface {
 	ID() string
 	Name() string
@@ -179,4 +184,8 @@ func (app *runner) Stop() (err error) {
 func Run(opts ...RunOption) error {
 	app := newRunner(opts...)
 	return app.Run()
+}
+
+func NewRunner(opts ...RunOption) Runner {
+	return newRunner(opts...)
 }
