@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 var gopaths []string
@@ -54,7 +55,8 @@ type goModuleSearchResult struct {
 	moduleName string
 }
 
-var goModuleRootCache = map[string]goModuleSearchResult{}
+// var goModuleRootCache = map[string]goModuleSearchResult{}
+var goModuleRootCache sync.Map
 
 // goModuleRoot returns the root of the current go module if there is a go.mod file in the directory tree
 // If not, it returns false
@@ -72,8 +74,8 @@ func goModuleRoot(dir string) (string, bool) {
 	for {
 		modDir := dirs[len(dirs)-1]
 
-		if val, ok := goModuleRootCache[dir]; ok {
-			result = val
+		if val, ok := goModuleRootCache.Load(dir); ok {
+			result = val.(goModuleSearchResult)
 			break
 		}
 
@@ -84,14 +86,16 @@ func goModuleRoot(dir string) (string, bool) {
 				goModPath:  modDir,
 				moduleName: moduleName,
 			}
-			goModuleRootCache[modDir] = result
+			//goModuleRootCache[modDir] = result
+			goModuleRootCache.Store(modDir, result)
 			break
 		}
 
 		if modDir == "" || modDir == "." || modDir == "/" || strings.HasSuffix(modDir, "\\") {
 			// Reached the top of the file tree which means go.mod file is not found
 			// Set root folder with a sentinel cache value
-			goModuleRootCache[modDir] = result
+			//goModuleRootCache[modDir] = result
+			goModuleRootCache.Store(modDir, result)
 			break
 		}
 
@@ -102,7 +106,8 @@ func goModuleRoot(dir string) (string, bool) {
 	for _, d := range dirs[:len(dirs)-1] {
 		if result.moduleName == "" {
 			// go.mod is not found in the tree, so the same sentinel value fits all the directories in a tree
-			goModuleRootCache[d] = result
+			//goModuleRootCache[d] = result
+			goModuleRootCache.Store(d, result)
 		} else {
 			if relPath, err := filepath.Rel(result.goModPath, d); err != nil {
 				panic(err)
@@ -114,16 +119,28 @@ func goModuleRoot(dir string) (string, bool) {
 				}
 				path += relPath
 
-				goModuleRootCache[d] = goModuleSearchResult{
-					path:       path,
-					goModPath:  result.goModPath,
-					moduleName: result.moduleName,
-				}
+				//goModuleRootCache[d] = goModuleSearchResult{
+				//	path:       path,
+				//	goModPath:  result.goModPath,
+				//	moduleName: result.moduleName,
+				//}
+				goModuleRootCache.Store(
+					d, goModuleSearchResult{
+						path:       path,
+						goModPath:  result.goModPath,
+						moduleName: result.moduleName,
+					},
+				)
 			}
 		}
 	}
 
-	res := goModuleRootCache[dir]
+	cache, ok := goModuleRootCache.Load(dir)
+	if !ok {
+		return "", false
+	}
+
+	res := cache.(goModuleSearchResult)
 	if res.moduleName == "" {
 		return "", false
 	}

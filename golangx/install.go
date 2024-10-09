@@ -1,9 +1,10 @@
 package golangx
 
 import (
+	"context"
 	"fmt"
+	"github.com/aesoper101/x/execext/command"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/aesoper101/x/execext"
@@ -33,10 +34,14 @@ func GoInstall(repository string) error {
 		repository = strings.TrimPrefix(repository, "http://")
 	}
 
-	cmd := exec.Command("go", "install", repository)
-	cmd.Env = env
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	runner := command.NewRunner()
 
-	return cmd.Run()
+	return runner.Run(
+		context.Background(),
+		"go",
+		command.RunWithArgs("install", repository),
+		command.RunWithEnviron(env),
+		command.RunWithStdout(os.Stdout),
+		command.RunWithStderr(os.Stderr),
+	)
 }
