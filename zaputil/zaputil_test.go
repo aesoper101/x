@@ -2,10 +2,13 @@ package zaputil
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"testing"
+	"time"
+
+	"go.uber.org/zap/zapcore"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zapcore"
 )
 
 func TestGetZapLevel(t *testing.T) {
@@ -65,4 +68,16 @@ func TestGetZapEncoder(t *testing.T) {
 	unknownFormat := "invalid"
 	_, err := getZapEncoder(Format(unknownFormat))
 	assert.EqualError(t, err, fmt.Sprintf("unknown log format [text,color,json]: %q", unknownFormat))
+}
+
+func TestNewLogger(t *testing.T) {
+	t.Parallel()
+	logger := NewLogger(WithFormat(FormatJSON))
+	assert.NotNil(t, logger)
+
+	logger.With(
+		zap.String("url", "url"),
+		zap.Int("attempt", 3),
+		zap.Duration("backoff", time.Second),
+	).Info("test")
 }

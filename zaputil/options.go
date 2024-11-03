@@ -1,6 +1,7 @@
 package zaputil
 
 import (
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io"
 	"os"
@@ -11,6 +12,8 @@ type options struct {
 	writer  io.Writer
 	encoder zapcore.Encoder
 	format  Format
+
+	zapOptions []zap.Option
 }
 
 type Option func(*options)
@@ -65,5 +68,11 @@ func WithFormat(format Format) Option {
 		if format.IsValid() {
 			o.format = format
 		}
+	}
+}
+
+func WithZapOptions(opts ...zap.Option) Option {
+	return func(o *options) {
+		o.zapOptions = append(o.zapOptions, opts...)
 	}
 }

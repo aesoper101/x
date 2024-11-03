@@ -38,18 +38,20 @@ func NewLogger(opts ...Option) *zap.Logger {
 		encoder, _ := getZapEncoder(options.format)
 		options.encoder = cond.Ternary(encoder != nil, encoder, NewJSONEncoder())
 	}
+
 	return zap.New(
 		zapcore.NewCore(
 			options.encoder,
 			zapcore.Lock(zapcore.AddSync(options.writer)),
 			zap.NewAtomicLevelAt(options.level),
 		),
+		options.zapOptions...,
 	)
 }
 
 // NewLoggerForFlagValues returns a new Logger for the given level and format strings.
 //
-// The level can be [debug,info,warn,error]. The default is info.
+// The level can be [debug,info,warn,error,panic,fatal]. The default is info.
 // The format can be [text,color,json]. The default is color.
 func NewLoggerForFlagValues(writer io.Writer, levelString string, format string) (*zap.Logger, error) {
 	level, err := getZapLevel(levelString)
@@ -89,8 +91,12 @@ func getZapLevel(level string) (zapcore.Level, error) {
 		return zapcore.WarnLevel, nil
 	case "error":
 		return zapcore.ErrorLevel, nil
+	case "fatal":
+		return zapcore.FatalLevel, nil
+	case "panic":
+		return zapcore.PanicLevel, nil
 	default:
-		return 0, fmt.Errorf("unknown log level [debug,info,warn,error]: %q", level)
+		return 0, fmt.Errorf("unknown log level [debug,info,warn,error,panic,fatal]: %q", level)
 	}
 }
 
