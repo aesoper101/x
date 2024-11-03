@@ -7,7 +7,8 @@ import (
 	"github.com/aesoper101/x/internal/verbose"
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel/trace"
-	"log/slog"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"path/filepath"
 	"time"
 )
@@ -58,11 +59,11 @@ func NewNameContainer(envContainer app.EnvContainer, appName string) (NameContai
 
 // LoggerContainer provides a *zap.Logger.
 type LoggerContainer interface {
-	Logger() *slog.Logger
+	Logger() *zap.Logger
 }
 
 // NewLoggerContainer returns a new LoggerContainer.
-func NewLoggerContainer(logger *slog.Logger) LoggerContainer {
+func NewLoggerContainer(logger *zap.Logger) LoggerContainer {
 	return newLoggerContainer(logger)
 }
 
@@ -102,7 +103,7 @@ type Container interface {
 func NewContainer(
 	baseContainer app.Container,
 	appName string,
-	logger *slog.Logger,
+	logger *zap.Logger,
 	verbosePrinter verbose.Printer,
 ) (Container, error) {
 	return newContainer(
@@ -157,7 +158,7 @@ func BuilderWithInterceptor(interceptor Interceptor) BuilderOption {
 }
 
 // BuilderWithDefaultLogLevel adds the given default log level.
-func BuilderWithDefaultLogLevel(defaultLogLevel slog.Level) BuilderOption {
+func BuilderWithDefaultLogLevel(defaultLogLevel zapcore.Level) BuilderOption {
 	return func(builder *builder) {
 		builder.defaultLogLevel = defaultLogLevel
 	}

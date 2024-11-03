@@ -3,7 +3,7 @@ package appext
 import (
 	"github.com/aesoper101/x/app"
 	"github.com/aesoper101/x/internal/verbose"
-	"log/slog"
+	"go.uber.org/zap"
 )
 
 type container struct {
@@ -17,7 +17,7 @@ type container struct {
 func newContainer(
 	baseContainer app.Container,
 	appName string,
-	logger *slog.Logger,
+	logger *zap.Logger,
 	verbosePrinter verbose.Printer,
 ) (*container, error) {
 	nameContainer, err := newNameContainer(baseContainer, appName)

@@ -2,7 +2,7 @@ package transportx
 
 import (
 	"context"
-	"log/slog"
+	"go.uber.org/zap"
 	"net/url"
 	"time"
 )
@@ -45,7 +45,7 @@ func AfterStop(fn ...func(ctx context.Context) error) RunOption {
 	}
 }
 
-func WithLogger(logger *slog.Logger) RunOption {
+func WithLogger(logger *zap.Logger) RunOption {
 	return func(app *runner) {
 		app.logger = logger
 	}

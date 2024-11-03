@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aesoper101/x/watcherext"
+	"github.com/aesoper101/x/zaputil"
 	"github.com/inhies/go-bytesize"
 	"github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/providers/posflag"
@@ -12,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/spf13/pflag"
-	"log/slog"
+	"go.uber.org/zap"
 	"net/url"
 	"reflect"
 	"sync"
@@ -43,7 +44,7 @@ type Provider struct {
 	skipValidation    bool
 	disableEnvLoading bool
 
-	logger *slog.Logger
+	logger *zap.Logger
 
 	providers     []koanf.Provider
 	userProviders []koanf.Provider
@@ -74,7 +75,7 @@ func New(ctx context.Context, schema []byte, modifiers ...OptionModifier) (*Prov
 		schema:                   schema,
 		onValidationError:        func(k *koanf.Koanf, err error) {},
 		excludeFieldsFromTracing: []string{"dsn", "secret", "password", "key"},
-		logger:                   slog.Default(),
+		logger:                   zaputil.NewLogger(),
 		Koanf:                    koanf.NewWithConf(koanf.Conf{Delim: Delimiter, StrictMerge: true}),
 	}
 
@@ -109,30 +110,78 @@ func (p *Provider) SkipValidation() bool {
 	return p.skipValidation
 }
 
-func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provider, err error) {
+// createProviders 创建并返回一组 Koanf Provider，根据给定的配置。
+func (p *Provider) createProviders(ctx context.Context) ([]koanf.Provider, error) {
+	defaultsProvider, err := p.createDefaultsProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	baseProviders := p.createBaseProviders()
+	fileProviders, err := p.createFileProviders(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	userProviders := p.userProviders
+	flagProvider, err := p.createFlagProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	envProvider, err := p.createEnvProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	forcedProviders := p.createForcedProviders()
+
+	providers := append([]koanf.Provider{defaultsProvider}, baseProviders...)
+	providers = append(providers, fileProviders...)
+	providers = append(providers, userProviders...)
+	if flagProvider != nil {
+		providers = append(providers, flagProvider)
+	}
+	if envProvider != nil {
+		providers = append(providers, envProvider)
+	}
+	providers = append(providers, forcedProviders...)
+
+	return providers, nil
+}
+
+// createDefaultsProvider 创建默认的 Koanf Provider。
+func (p *Provider) createDefaultsProvider() (koanf.Provider, error) {
 	defaultsProvider, err := NewKoanfSchemaDefaults(p.schema, p.validator)
 	if err != nil {
 		return nil, err
 	}
-	providers = append(providers, defaultsProvider)
+	return defaultsProvider, nil
+}
 
-	// Workaround for https://github.com/knadh/koanf/pull/47
+// createBaseProviders 创建基于基础值的 Koanf Provider 列表。
+func (p *Provider) createBaseProviders() []koanf.Provider {
+	var providers []koanf.Provider
 	for _, t := range p.baseValues {
 		providers = append(providers, NewKoanfConfmap([]tuple{t}))
 	}
+	return providers
+}
 
+// createFileProviders 创建基于文件路径的 Koanf Provider 列表，并启动文件变化监听。
+func (p *Provider) createFileProviders(ctx context.Context) ([]koanf.Provider, error) {
 	paths := p.files
 	if p.flags != nil {
 		p, _ := p.flags.GetStringSlice(FlagConfig)
 		paths = append(paths, p...)
 	}
 
-	p.logger.Debug("Adding config files.", "files", paths)
+	p.logger.Debug("Adding config files.", zap.Strings("files", paths))
 
 	c := make(watcherext.EventChannel)
-
 	go p.watchForFileChanges(ctx, c)
 
+	var providers []koanf.Provider
 	for _, path := range paths {
 		fp, err := NewKoanfFile(path)
 		if err != nil {
@@ -147,33 +196,42 @@ func (p *Provider) createProviders(ctx context.Context) (providers []koanf.Provi
 
 		providers = append(providers, fp)
 	}
+	return providers, nil
+}
 
-	providers = append(providers, p.userProviders...)
-
-	if p.flags != nil {
-		pp, err := NewPFlagProvider(p.schema, p.validator, p.flags, p.Koanf)
-		if err != nil {
-			p.closeWatcher(c)
-			return nil, err
-		}
-		providers = append(providers, pp)
+// createFlagProvider 创建基于命令行标志的 Koanf Provider（如果启用了标志）。
+func (p *Provider) createFlagProvider() (koanf.Provider, error) {
+	if p.flags == nil {
+		return nil, nil
 	}
 
-	if !p.disableEnvLoading {
-		envProvider, err := NewKoanfEnv("", p.schema, p.validator)
-		if err != nil {
-			p.closeWatcher(c)
-			return nil, err
-		}
-		providers = append(providers, envProvider)
+	pp, err := NewPFlagProvider(p.schema, p.validator, p.flags, p.Koanf)
+	if err != nil {
+		return nil, err
+	}
+	return pp, nil
+}
+
+// createEnvProvider 创建基于环境变量的 Koanf Provider（如果未禁用环境变量加载）。
+func (p *Provider) createEnvProvider() (koanf.Provider, error) {
+	if p.disableEnvLoading {
+		return nil, nil
 	}
 
-	// Workaround for https://github.com/knadh/koanf/pull/47
+	envProvider, err := NewKoanfEnv("", p.schema, p.validator)
+	if err != nil {
+		return nil, err
+	}
+	return envProvider, nil
+}
+
+// createForcedProviders 创建基于强制值的 Koanf Provider 列表。
+func (p *Provider) createForcedProviders() []koanf.Provider {
+	var providers []koanf.Provider
 	for _, t := range p.forcedValues {
 		providers = append(providers, NewKoanfConfmap([]tuple{t}))
 	}
-
-	return providers, nil
+	return providers
 }
 
 func (p *Provider) closeWatcher(w watcherext.EventChannel) {
@@ -442,8 +500,8 @@ func (p *Provider) ByteSizeF(key string, fallback bytesize.ByteSize) bytesize.By
 		if err != nil {
 			p.logger.Warn(
 				fmt.Sprintf("error parsing byte size value, using fallback of %s", fallback),
-				slog.Any("key", key),
-				slog.Any("raw_value", fmt.Sprintf("%+v", v)),
+				zap.String("key", key),
+				zap.String("raw_value", v),
 			)
 			return fallback
 		}
@@ -459,9 +517,9 @@ func (p *Provider) ByteSizeF(key string, fallback bytesize.ByteSize) bytesize.By
 				"error converting byte size value because of unknown type, using fallback of %s",
 				fallback,
 			),
-			slog.Any("key", key),
-			slog.Any("raw_value", fmt.Sprintf("%+v", v)),
-			slog.Any("raw_type", fmt.Sprintf("%T", v)),
+			zap.String("key", key),
+			zap.String("raw_value", fmt.Sprintf("%+v", v)),
+			zap.String("raw_type", fmt.Sprintf("%T", v)),
 		)
 		return fallback
 	}

@@ -24,6 +24,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.6-0.20230925090304-df64c4bbad77
 	github.com/pelletier/go-toml v1.9.5
 	github.com/pkg/errors v0.9.1
+	github.com/pkg/profile v1.7.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1
 	github.com/schollz/progressbar/v3 v3.14.6
 	github.com/spf13/cast v1.7.0
@@ -32,12 +33,14 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/gjson v1.17.3
 	github.com/tidwall/sjson v1.2.5
-	go.opentelemetry.io/otel v1.28.0
-	go.opentelemetry.io/otel/trace v1.28.0
+	go.opentelemetry.io/otel v1.31.0
+	go.opentelemetry.io/otel/sdk v1.31.0
+	go.opentelemetry.io/otel/trace v1.31.0
 	go.uber.org/atomic v1.11.0
-	go.uber.org/goleak v1.2.1
+	go.uber.org/goleak v1.3.0
 	go.uber.org/mock v0.4.0
 	go.uber.org/multierr v1.11.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.8.0
 	golang.org/x/term v0.23.0
 	golang.org/x/tools v0.24.0
@@ -51,9 +54,11 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/felixge/fgprof v0.9.3 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
+	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -68,9 +73,9 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	go.opentelemetry.io/otel/metric v1.28.0 // indirect
+	go.opentelemetry.io/otel/metric v1.31.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/mod v0.20.0 // indirect
-	golang.org/x/sys v0.24.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
 )

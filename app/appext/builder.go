@@ -5,8 +5,15 @@ import (
 	"fmt"
 	"github.com/aesoper101/x/app"
 	"github.com/aesoper101/x/internal/verbose"
+	"github.com/aesoper101/x/observabilityzap"
+	"github.com/aesoper101/x/zaputil"
+	"github.com/pkg/profile"
 	"github.com/spf13/pflag"
-	"log/slog"
+	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/multierr"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"os"
 	"time"
 )
 
@@ -32,15 +39,15 @@ type builder struct {
 
 	tracing bool
 
-	// 0 is InfoLevel in slog
-	defaultLogLevel slog.Level
+	// 0 is InfoLevel in zap
+	defaultLogLevel zapcore.Level
 	interceptors    []Interceptor
 }
 
 func newBuilder(appName string, options ...BuilderOption) *builder {
 	builder := &builder{
 		appName:         appName,
-		defaultLogLevel: slog.LevelInfo,
+		defaultLogLevel: zapcore.InfoLevel,
 	}
 	for _, option := range options {
 		option(builder)
@@ -53,8 +60,24 @@ func (b *builder) BindRoot(flagSet *pflag.FlagSet) {
 	flagSet.BoolVar(&b.debug, "debug", false, "Turn on debug logging")
 	flagSet.StringVar(&b.logFormat, "log-format", "color", "The log format [text,json]")
 	if b.defaultTimeout > 0 {
-		flagSet.DurationVar(&b.timeout, "timeout", b.defaultTimeout, `The duration until timing out, setting it to zero means no timeout`)
+		flagSet.DurationVar(
+			&b.timeout,
+			"timeout",
+			b.defaultTimeout,
+			`The duration until timing out, setting it to zero means no timeout`,
+		)
 	}
+
+	flagSet.BoolVar(&b.profile, "profile", false, "Run profiling")
+	_ = flagSet.MarkHidden("profile")
+	flagSet.StringVar(&b.profilePath, "profile-path", "", "The profile base directory path")
+	_ = flagSet.MarkHidden("profile-path")
+	flagSet.IntVar(&b.profileLoops, "profile-loops", 1, "The number of loops to run")
+	_ = flagSet.MarkHidden("profile-loops")
+	flagSet.StringVar(&b.profileType, "profile-type", "cpu", "The profile type [cpu,mem,block,mutex]")
+	_ = flagSet.MarkHidden("profile-type")
+	flagSet.BoolVar(&b.profileAllowError, "profile-allow-error", false, "Allow errors for profiled commands")
+	_ = flagSet.MarkHidden("profile-allow-error")
 
 	// We do not officially support this flag, this is for testing, where we need warnings turned off.
 	flagSet.BoolVar(&b.noWarn, "no-warn", false, "Turn off warn logging")
@@ -82,17 +105,13 @@ func (b *builder) run(
 	if err != nil {
 		return err
 	}
-	var logHandler slog.Handler
-	if b.logFormat == "" {
-		logHandler = slog.NewJSONHandler(appContainer.Stderr(), &slog.HandlerOptions{
-			Level: logLevel,
-		})
-	} else {
-		logHandler = slog.NewTextHandler(appContainer.Stderr(), &slog.HandlerOptions{
-			Level: logLevel,
-		})
+	logger, err := zaputil.NewLoggerForFlagValues(appContainer.Stderr(), logLevel, b.logFormat)
+	if err != nil {
+		return err
 	}
-	logger := slog.New(logHandler)
+	defer func() {
+		retErr = multierr.Append(retErr, logger.Sync())
+	}()
 
 	verbosePrinter := verbose.NewPrinterForFlagValue(appContainer.Stderr(), b.appName, b.verbose)
 	container, err := newContainer(appContainer, b.appName, logger, verbosePrinter)
@@ -107,23 +126,92 @@ func (b *builder) run(
 	}
 
 	if b.tracing {
-		// TODO: We should probably have a way to configure the tracer.
+		tracerProvider, closer := observabilityzap.Start(logger)
+		defer func() {
+			retErr = multierr.Append(retErr, closer.Close())
+		}()
+		var span trace.Span
+		ctx, span = tracerProvider.Tracer(b.appName).Start(ctx, "command")
+		defer span.End()
 	}
 
-	return f(ctx, container)
+	if !b.profile {
+		return f(ctx, container)
+	}
+	return runProfile(
+		logger,
+		b.profilePath,
+		b.profileType,
+		b.profileLoops,
+		b.profileAllowError,
+		func() error {
+			return f(ctx, container)
+		},
+	)
 }
 
-func getLogLevel(defaultLogLevel slog.Level, debugFlag bool, noWarnFlag bool) (slog.Level, error) {
+func runProfile(
+	logger *zap.Logger,
+	profilePath string,
+	profileType string,
+	profileLoops int,
+	profileAllowError bool,
+	f func() error,
+) error {
+	var err error
+	if profilePath == "" {
+		profilePath, err = os.MkdirTemp("", "")
+		if err != nil {
+			return err
+		}
+	}
+	logger.Debug("profile", zap.String("path", profilePath))
+	if profileType == "" {
+		profileType = "cpu"
+	}
+	if profileLoops == 0 {
+		profileLoops = 10
+	}
+	var profileFunc func(*profile.Profile)
+	switch profileType {
+	case "cpu":
+		profileFunc = profile.CPUProfile
+	case "mem":
+		profileFunc = profile.MemProfile
+	case "block":
+		profileFunc = profile.BlockProfile
+	case "mutex":
+		profileFunc = profile.MutexProfile
+	default:
+		return fmt.Errorf("unknown profile type: %q", profileType)
+	}
+	stop := profile.Start(
+		profile.Quiet,
+		profile.ProfilePath(profilePath),
+		profileFunc,
+	)
+	for i := 0; i < profileLoops; i++ {
+		if err := f(); err != nil {
+			if !profileAllowError {
+				return err
+			}
+		}
+	}
+	stop.Stop()
+	return nil
+}
+
+func getLogLevel(defaultLogLevel zapcore.Level, debugFlag bool, noWarnFlag bool) (string, error) {
 	if debugFlag && noWarnFlag {
-		return slog.LevelInfo, fmt.Errorf("cannot set both --debug and --no-warn")
+		return "", fmt.Errorf("cannot set both --debug and --no-warn")
 	}
 	if noWarnFlag {
-		return slog.LevelError, nil
+		return "error", nil
 	}
 	if debugFlag {
-		return slog.LevelDebug, nil
+		return "debug", nil
 	}
-	return defaultLogLevel, nil
+	return defaultLogLevel.String(), nil
 }
 
 // chainInterceptors consolidates the given interceptors into one.

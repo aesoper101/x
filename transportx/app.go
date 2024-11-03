@@ -7,8 +7,9 @@ import (
 	"errors"
 	"github.com/aesoper101/x/interrupt"
 	"github.com/aesoper101/x/uuidutil"
+	"github.com/aesoper101/x/zaputil"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"log/slog"
 	"net/url"
 	"sync"
 	"time"
@@ -53,7 +54,7 @@ func (app *appInfo) Metadata() map[string]string { return app.metadata }
 type runner struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	logger *slog.Logger
+	logger *zap.Logger
 
 	appInfo AppInfo
 
@@ -78,7 +79,7 @@ type runner struct {
 func newRunner(opts ...RunOption) *runner {
 	app := &runner{
 		ctx:    context.Background(),
-		logger: slog.Default(),
+		logger: zaputil.NewLogger(),
 
 		stopTimeout: time.Second * 10,
 	}

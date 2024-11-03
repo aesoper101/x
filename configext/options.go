@@ -7,18 +7,18 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/spf13/pflag"
-	"log/slog"
+	"go.uber.org/zap"
 )
 
 type (
 	OptionModifier func(p *Provider)
 )
 
-//func WithContext(ctx context.Context) OptionModifier {
+// func WithContext(ctx context.Context) OptionModifier {
 //	return func(p *Provider) {
 //		p.ctx = ctx
 //	}
-//}
+// }
 
 func WithConfigFiles(files ...string) OptionModifier {
 	return func(p *Provider) {
@@ -44,7 +44,7 @@ func WithFlags(flags *pflag.FlagSet) OptionModifier {
 	}
 }
 
-func WithLogger(l *slog.Logger) OptionModifier {
+func WithLogger(l *zap.Logger) OptionModifier {
 	return func(p *Provider) {
 		p.logger = l
 	}
@@ -102,17 +102,16 @@ func AttachWatcher(watcher func(event watcherext.Event, err error)) OptionModifi
 	}
 }
 
-func WithLoggerWatcher(l *slog.Logger) OptionModifier {
+func WithLoggerWatcher(l *zap.Logger) OptionModifier {
 	return AttachWatcher(LogWatcher(l))
 }
 
-func LogWatcher(l *slog.Logger) func(e watcherext.Event, err error) {
+func LogWatcher(l *zap.Logger) func(e watcherext.Event, err error) {
 	return func(e watcherext.Event, err error) {
 		l.Info(
-			"A change to a configuration file was detected.", slog.Any("file", e.Source()), slog.Any(
-				"event_type",
-				fmt.Sprintf("%T", e),
-			),
+			"A change to a configuration file was detected.",
+			zap.String("file", e.Source()),
+			zap.String("event_type", fmt.Sprintf("%T", e)),
 		)
 
 		if et := new(jsonschema.ValidationError); errors.As(err, &et) {
@@ -120,30 +119,28 @@ func LogWatcher(l *slog.Logger) func(e watcherext.Event, err error) {
 				"The changed configuration is invalid and could not be loaded. "+
 					"Rolling back to the last working configuration revision. "+
 					"Please address the validation errors before restarting the process.",
-				"event",
-				fmt.Sprintf("%#v", et),
+				zap.String("event", fmt.Sprintf("%#v", et)),
 			)
 		} else if et := new(ImmutableError); errors.As(err, &et) {
 			l.Error(
 				"A configuration value marked as immutable has changed. "+
 					"Rolling back to the last working configuration revision. "+
-					"To reload the values please restart the process.", slog.Any("key", et.Key), slog.Any(
-					"old_value",
-					fmt.Sprintf("%v", et.From),
-				), slog.Any("new_value", fmt.Sprintf("%v", et.To)),
+					"To reload the values please restart the process.",
+				zap.String("key", et.Key),
+				zap.String("old_value", fmt.Sprintf("%v", et.From)),
+				zap.String("new_value", fmt.Sprintf("%v", et.To)),
 			)
 		} else if err != nil {
 			l.Error(
-				"An error occurred while watching config file.", slog.Any("error", err), slog.Any(
-					"file",
-					e.Source(),
-				),
+				"An error occurred while watching config file.",
+				zap.Error(err),
+				zap.String("file", e.Source()),
 			)
 		} else {
 			l.Info(
 				"Configuration change processed successfully.",
-				slog.Any("file", e.Source()),
-				slog.Any("event_type", fmt.Sprintf("%T", e)),
+				zap.String("file", e.Source()),
+				zap.String("event_type", fmt.Sprintf("%T", e)),
 			)
 		}
 	}
