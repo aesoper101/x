@@ -1,0 +1,7 @@
+header:
+  license:
+    spdx-id: MIT
+    copyright-owner: aesoper
+dependency: # <16>
+  files: # <17>
+    - go.mod
